@@ -1,93 +1,138 @@
 /**
- * Módulo de Gestão de Produtos
+ * Módulo de Produtos
+ * Gerencia o cadastro, edição e listagem de itens no catálogo.
  */
-const Produtos = {
-    async init() {
-        this.cacheSelectors();
-        this.bindEvents();
-        await this.listarProdutos();
-    },
 
-    cacheSelectors() {
-        this.tbody = document.getElementById('produtos-tbody');
-        this.form = document.getElementById('form-produto');
-        this.modal = document.getElementById('modal-produto');
-        this.btnNovo = document.getElementById('btn-novo-produto');
-    },
+document.addEventListener('DOMContentLoaded', () => {
+    const formProduto = document.getElementById('form-produto');
+    const btnNovoProduto = document.getElementById('btn-novo-produto');
+    const modalProduto = document.getElementById('modal-produto');
 
-    bindEvents() {
-        if (this.btnNovo) {
-            this.btnNovo.onclick = () => this.abrirModal();
-        }
-        if (this.form) {
-            this.form.onsubmit = (e) => this.handleSalvar(e);
-        }
-    },
-
-    async listarProdutos() {
-        const produtos = await window.api.getProdutos();
-        if (!this.tbody) return;
-
-        if (produtos.length === 0) {
-            this.tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Nenhum produto cadastrado.</td></tr>';
-            return;
-        }
-
-        this.tbody.innerHTML = produtos.map(p => `
-            <tr>
-                <td>${p.nome}</td>
-                <td><span class="categoria-badge">${p.categoria}</span></td>
-                <td>R$ ${parseFloat(p.preco).toFixed(2)}</td>
-                <td>${p.estoque}</td>
-                <td>${p.estoque > (p.estoque_minimo || 0) ? '✅ Ativo' : '⚠️ Baixo'}</td>
-                <td>
-                    <button class="btn-edit" onclick="Produtos.abrirModal(${p.id})"><i class="fas fa-edit"></i></button>
-                    <button class="btn-remove" onclick="Produtos.excluir(${p.id})"><i class="fas fa-trash"></i></button>
-                </td>
-            </tr>
-        `).join('');
-    },
-
-    async abrirModal(id = null) {
-        this.modal.classList.add('active');
-        this.form.reset();
-        document.getElementById('produto-id').value = '';
-
-        if (id) {
-            const produtos = await window.api.getProdutos();
-            const p = produtos.find(item => item.id == id);
-            document.getElementById('produto-id').value = p.id;
-            document.getElementById('produto-nome').value = p.nome;
-            document.getElementById('produto-categoria').value = p.categoria;
-            document.getElementById('produto-preco').value = p.preco;
-            document.getElementById('produto-estoque').value = p.estoque;
-            document.getElementById('produto-estoque-minimo').value = p.estoque_minimo || 5;
-        }
-    },
-
-    async handleSalvar(e) {
-        e.preventDefault();
-        const produto = {
-            id: document.getElementById('produto-id').value,
-            nome: document.getElementById('produto-nome').value,
-            categoria: document.getElementById('produto-categoria').value,
-            preco: parseFloat(document.getElementById('produto-preco').value),
-            estoque: parseInt(document.getElementById('produto-estoque').value),
-            estoque_minimo: parseInt(document.getElementById('produto-estoque-minimo').value)
-        };
-
-        await window.api.salvarProduto(produto);
-        this.modal.classList.remove('active');
-        await this.listarProdutos();
-        if (window.PDV) window.PDV.carregarProdutos(); // Atualiza PDV se estiver aberto
-    },
-
-    async excluir(id) {
-        if (confirm("Deseja realmente excluir este produto?")) {
-            await window.api.excluirProduto(id);
-            await this.listarProdutos();
-        }
+    // Inicializa os eventos de clique do modal
+    if (btnNovoProduto) {
+        btnNovoProduto.addEventListener('click', () => {
+            formProduto.reset();
+            document.getElementById('produto-id').value = '';
+            document.getElementById('modal-produto-titulo').innerText = 'Novo Produto';
+            modalProduto.classList.add('active');
+            modalProduto.style.display = 'flex';
+        });
     }
-};
 
-window.Produtos = Produtos;
+    // Lógica de Salvar Produto
+    if (formProduto) {
+        formProduto.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            try {
+                const produtoData = {
+                    id: document.getElementById('produto-id').value || null,
+                    nome: document.getElementById('produto-nome').value,
+                    categoria: document.getElementById('produto-categoria-input').value,
+                    preco: parseFloat(document.getElementById('produto-preco').value),
+                    estoque: parseInt(document.getElementById('produto-estoque').value),
+                    estoqueMinimo: parseInt(document.getElementById('produto-estoque-minimo').value) || 5
+                };
+
+                // Chama o método salvarProduto definido no seu js/api.js
+                await API.salvarProduto(produtoData);
+                
+                Utils.showToast('Produto gravado com sucesso!');
+                
+                // Fecha o modal e limpa o formulário
+                modalProduto.classList.remove('active');
+                modalProduto.style.display = 'none';
+                formProduto.reset();
+                
+                // Atualiza a tabela local e notifica outros módulos
+                window.renderProdutosTable();
+                window.dispatchEvent(new CustomEvent('produtosUpdated'));
+                
+            } catch (error) {
+                Utils.log('PRODUTOS_SALVAR', error);
+                Utils.showToast('Erro ao salvar produto. Verifique os logs.', 'error');
+            }
+        });
+    }
+
+    // Função para renderizar a tabela (Exposta globalmente)
+    window.renderProdutosTable = async () => {
+        const tbody = document.getElementById('produtos-tbody');
+        if (!tbody) return;
+
+        try {
+            const produtos = await API.getProdutos();
+            tbody.innerHTML = '';
+
+            if (produtos.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Nenhum produto cadastrado.</td></tr>';
+                return;
+            }
+
+            produtos.forEach(produto => {
+                const tr = document.createElement('tr');
+                const critico = produto.estoque <= (produto.estoqueMinimo || 5) ? 'estoque-critico' : '';
+                
+                tr.innerHTML = `
+                    <td>${produto.nome}</td>
+                    <td><span class="categoria-badge">${produto.categoria}</span></td>
+                    <td>${Utils.formatCurrency(produto.preco)}</td>
+                    <td class="${critico}">${produto.estoque}</td>
+                    <td>${produto.estoque > 0 ? 'Ativo' : 'Esgotado'}</td>
+                    <td>
+                        <button class="btn-edit" onclick="editarProduto('${produto.id}')" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-delete" onclick="excluirProduto('${produto.id}')" title="Excluir">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } catch (error) {
+            Utils.log('PRODUTOS_RENDER', error);
+        }
+    };
+
+    // Função para carregar dados no modal de edição
+    window.editarProduto = async (id) => {
+        try {
+            const produtos = await API.getProdutos();
+            const produto = produtos.find(p => String(p.id) === String(id));
+
+            if (produto) {
+                document.getElementById('produto-id').value = produto.id;
+                document.getElementById('produto-nome').value = produto.nome;
+                document.getElementById('produto-categoria-input').value = produto.categoria;
+                document.getElementById('produto-preco').value = produto.preco;
+                document.getElementById('produto-estoque').value = produto.estoque;
+                document.getElementById('produto-estoque-minimo').value = produto.estoqueMinimo;
+
+                document.getElementById('modal-produto-titulo').innerText = 'Editar Produto';
+                modalProduto.classList.add('active');
+                modalProduto.style.display = 'flex';
+            }
+        } catch (error) {
+            Utils.log('PRODUTOS_EDITAR', error);
+        }
+    };
+
+    // Função para excluir produto
+    window.excluirProduto = async (id) => {
+        if (confirm('Deseja realmente excluir este produto?')) {
+            try {
+                await API.excluirProduto(id);
+                Utils.showToast('Produto removido com sucesso.');
+                window.renderProdutosTable();
+                window.dispatchEvent(new CustomEvent('produtosUpdated'));
+            } catch (error) {
+                Utils.log('PRODUTOS_EXCLUIR', error);
+                Utils.showToast('Erro ao excluir produto.', 'error');
+            }
+        }
+    };
+
+    // Carga inicial da tabela
+    window.renderProdutosTable();
+});

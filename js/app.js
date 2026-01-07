@@ -42,10 +42,10 @@ const App = {
         });
     },
 
-    // Carrega o conteúdo e dispara o .init() do módulo específico
+    // Carrega o conteúdo e dispara a inicialização do módulo específico
     async loadCurrentPage() {
-        // Mostra o loading se existir no utils
-        if (window.utils && window.utils.showLoading) window.utils.showLoading(true);
+        // Mostra o loading se existir no Utils
+        if (window.Utils && window.Utils.showLoading) window.Utils.showLoading(true);
 
         // Esconde todas as páginas e mostra a selecionada
         document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -55,26 +55,32 @@ const App = {
             targetPage.classList.add('active');
         }
 
-        // Tenta inicializar o objeto do módulo (PDV, Produtos, etc.)
+        // Tenta inicializar o módulo específico
         try {
             switch (this.currentPage) {
                 case 'pdv':
-                    if (window.PDV) await window.PDV.init();
+                    if (window.renderProdutosPDV) await window.renderProdutosPDV();
                     break;
                 case 'produtos':
-                    if (window.Produtos) await window.Produtos.init();
+                    if (window.renderProdutosTable) await window.renderProdutosTable();
                     break;
                 case 'estoque':
-                    if (window.Estoque) await window.Estoque.init();
+                    // Dispara evento para o estoque.js se atualizar
+                    window.dispatchEvent(new CustomEvent('produtosUpdated'));
                     break;
                 case 'vendas':
-                    if (window.Vendas) await window.Vendas.init();
+                    // Dispara evento para o vendas.js se atualizar
+                    window.dispatchEvent(new CustomEvent('vendaFinalizada'));
                     break;
             }
         } catch (error) {
-            console.error(`Falha ao iniciar módulo: ${this.currentPage}`, error);
+            if (window.Utils && window.Utils.log) {
+                window.Utils.log('APP_LOAD_PAGE', error);
+            } else {
+                console.error(`Falha ao iniciar módulo: ${this.currentPage}`, error);
+            }
         } finally {
-            if (window.utils && window.utils.showLoading) window.utils.showLoading(false);
+            if (window.Utils && window.Utils.showLoading) window.Utils.showLoading(false);
         }
     },
 
@@ -94,11 +100,13 @@ const App = {
 
     // Lógica universal para fechar modais (clicando fora ou no X)
     setupModals() {
-        // Fechar ao clicar no botão ou no fundo escuro
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('close-modal') || e.target.classList.contains('modal')) {
                 const openModal = document.querySelector('.modal.active');
-                if (openModal) openModal.classList.remove('active');
+                if (openModal) {
+                    openModal.classList.remove('active');
+                    openModal.style.display = 'none';
+                }
             }
         });
 

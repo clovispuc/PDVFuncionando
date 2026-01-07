@@ -1,59 +1,139 @@
 /**
- * Módulo de Controle de Estoque
+ * Módulo de Estoque
+ * Responsável por monitorar níveis críticos e gerenciar entradas/saídas manuais.
  */
-const Estoque = {
-    async init() {
-        console.log('📦 Inicializando Controle de Estoque...');
-        this.cacheSelectors();
-        await this.renderizarEstoque();
-    },
 
-    cacheSelectors() {
-        this.alertsContainer = document.getElementById('estoque-alerts');
-        this.tbody = document.getElementById('movimentacoes-tbody');
-    },
+document.addEventListener('DOMContentLoaded', () => {
+    
+    // Inicialização do módulo
+    const initEstoque = async () => {
+        await renderAlertasEstoque();
+        await renderMovimentacoes();
+    };
 
-    async renderizarEstoque() {
+    // Renderiza alertas apenas de itens que estão abaixo do mínimo
+    const renderAlertasEstoque = async () => {
+        const alertaContainer = document.getElementById('estoque-alerts');
+        if (!alertaContainer) return;
+
         try {
-            const produtos = await window.api.getProdutos();
-            
-            // 1. Renderiza Alertas de Estoque Baixo
-            if (this.alertsContainer) {
-                const baixos = produtos.filter(p => p.estoque <= (p.estoque_minimo || 5));
-                
-                if (baixos.length === 0) {
-                    this.alertsContainer.innerHTML = '<div style="color: green; padding: 10px;"><i class="fas fa-check-circle"></i> Todos os níveis de estoque estão normais.</div>';
-                } else {
-                    this.alertsContainer.innerHTML = baixos.map(p => `
-                        <div class="alert" style="background: #fff3cd; color: #856404; padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 5px solid #ffc107; display: flex; justify-content: space-between; align-items: center;">
-                            <span><i class="fas fa-exclamation-triangle"></i> O produto <strong>${p.nome}</strong> está com apenas <strong>${p.estoque}</strong> unidades.</span>
-                            <button class="btn-primary" onclick="App.currentPage='produtos'; App.loadCurrentPage();" style="padding: 5px 10px; font-size: 12px;">Repor</button>
-                        </div>
-                    `).join('');
-                }
+            const produtos = await API.getProdutos();
+            const criticos = produtos.filter(p => p.estoque <= (p.estoqueMinimo || 5));
+
+            if (criticos.length === 0) {
+                alertaContainer.innerHTML = `
+                    <div style="background: #ecfdf5; color: #065f46; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #10b981;">
+                        <i class="fas fa-check-circle"></i> Níveis de estoque operando normalmente.
+                    </div>
+                `;
+                return;
             }
 
-            // 2. Renderiza Tabela de "Situação Atual" (Como não temos logs ainda, mostra o saldo)
-            if (this.tbody) {
-                if (produtos.length === 0) {
-                    this.tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding: 20px;">Nenhum produto cadastrado para monitorar.</td></tr>';
-                    return;
-                }
-
-                this.tbody.innerHTML = produtos.map(p => `
-                    <tr>
-                        <td>${new Date().toLocaleDateString('pt-BR')}</td>
-                        <td>${p.nome}</td>
-                        <td><span class="categoria-badge">${p.categoria}</span></td>
-                        <td style="font-weight: bold; color: ${p.estoque <= (p.estoque_minimo || 5) ? 'red' : 'inherit'}">${p.estoque}</td>
-                        <td>Saldo Atual</td>
-                    </tr>
-                `).join('');
-            }
+            alertaContainer.innerHTML = criticos.map(p => `
+                <div style="background: #fef2f2; color: #991b1b; padding: 12px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #f87171;">
+                    <span>
+                        <i class="fas fa-exclamation-triangle"></i> 
+                        <strong>${p.nome}</strong> está crítico: ${p.estoque} unidades (Mínimo: ${p.estoqueMinimo})
+                    </span>
+                    <button onclick="realizarMovimentacaoManual('${p.id}', 'entrada')" 
+                            style="background: #991b1b; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: 600;">
+                        Repor Estoque
+                    </button>
+                </div>
+            `).join('');
         } catch (error) {
-            console.error("Erro ao carregar estoque:", error);
+            Utils.log('ESTOQUE_RENDER_ALERTAS', error);
         }
-    }
-};
+    };
 
-window.Estoque = Estoque;
+    // Renderiza a tabela principal com todos os produtos e opções de ajuste
+    const renderMovimentacoes = async () => {
+        const tbody = document.getElementById('movimentacoes-tbody');
+        if (!tbody) return;
+
+        try {
+            const produtos = await API.getProdutos();
+            tbody.innerHTML = '';
+
+            if (produtos.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:30px;">Nenhum produto cadastrado para gerenciar estoque.</td></tr>';
+                return;
+            }
+
+            produtos.forEach(produto => {
+                const isCritico = produto.estoque <= (produto.estoqueMinimo || 5);
+                const tr = document.createElement('tr');
+                
+                tr.innerHTML = `
+                    <td>${produto.nome}</td>
+                    <td><span class="categoria-badge">${produto.categoria}</span></td>
+                    <td style="font-weight: bold; color: ${isCritico ? '#ef4444' : '#1e293b'}">
+                        ${produto.estoque} ${isCritico ? '<i class="fas fa-arrow-down"></i>' : ''}
+                    </td>
+                    <td>
+                        <button class="btn-edit" onclick="realizarMovimentacaoManual('${produto.id}', 'entrada')" title="Entrada de Estoque" style="color: #10b981;">
+                            <i class="fas fa-plus-circle"></i>
+                        </button>
+                        <button class="btn-edit" onclick="realizarMovimentacaoManual('${produto.id}', 'saida')" title="Saída Manual" style="color: #ef4444;">
+                            <i class="fas fa-minus-circle"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        } catch (error) {
+            Utils.log('ESTOQUE_RENDER_TABELA', error);
+        }
+    };
+
+    // Realiza Entrada ou Saída manual
+    window.realizarMovimentacaoManual = async (id, tipo) => {
+        try {
+            const produtos = await API.getProdutos();
+            const index = produtos.findIndex(p => String(p.id) === String(id));
+            
+            if (index === -1) return;
+
+            const label = tipo === 'entrada' ? 'ENTRADA (Aumento)' : 'SAÍDA (Redução)';
+            const qtdStr = prompt(`Informe a quantidade de ${label} para: ${produtos[index].nome}`);
+            
+            if (qtdStr === null) return; // Cancelou o prompt
+            
+            const qtd = parseInt(qtdStr);
+            if (isNaN(qtd) || qtd <= 0) {
+                alert('Por favor, informe um número válido e maior que zero.');
+                return;
+            }
+
+            if (tipo === 'saida' && produtos[index].estoque < qtd) {
+                alert('Operação negada: Estoque insuficiente para esta saída manual.');
+                return;
+            }
+
+            // Atualiza o valor
+            if (tipo === 'entrada') {
+                produtos[index].estoque += qtd;
+            } else {
+                produtos[index].estoque -= qtd;
+            }
+
+            // Salva e atualiza interface
+            await API.saveProdutos(produtos);
+            Utils.showToast(`Estoque de ${produtos[index].nome} atualizado.`);
+            
+            // Notifica o sistema e atualiza a tela atual
+            window.dispatchEvent(new CustomEvent('produtosUpdated'));
+            await initEstoque();
+
+        } catch (error) {
+            Utils.log('ESTOQUE_AJUSTE_MANUAL', error);
+            Utils.showToast('Erro ao processar ajuste.', 'error');
+        }
+    };
+
+    // Escuta eventos de atualização global (como vendas no PDV)
+    window.addEventListener('produtosUpdated', initEstoque);
+
+    // Carga inicial
+    initEstoque();
+});

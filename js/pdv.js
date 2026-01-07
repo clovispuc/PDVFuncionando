@@ -1,119 +1,61 @@
 /**
- * PDV - Módulo de Vendas
- * Gerencia o carrinho e a exibição de produtos
+ * Módulo PDV - Ponto de Venda
+ * Responsável pela interface de vendas, carrinho e finalização de pedidos.
  */
-const PDV = {
-    produtos: [],
-    carrinho: [],
-    filtroAtual: 'todos',
 
-    async init() {
-        console.log('🛒 Inicializando PDV...');
-        this.cacheSelectors();
-        this.bindEvents();
-        await this.carregarProdutos();
-    },
+document.addEventListener('DOMContentLoaded', () => {
+    let carrinho = [];
 
-    cacheSelectors() {
-        this.grid = document.getElementById('produtos-grid');
-        this.carrinhoContainer = document.getElementById('carrinho-itens');
-        this.searchInput = document.getElementById('search-produto');
-        this.subtotalEl = document.getElementById('subtotal');
-        this.totalEl = document.getElementById('total');
-        this.btnFinalizar = document.getElementById('btn-finalizar');
-        this.btnLimpar = document.getElementById('btn-limpar');
-    },
+    // Função para renderizar os produtos no grid do PDV (Exposta para o App.js)
+    window.renderProdutosPDV = async () => {
+        const grid = document.getElementById('produtos-grid');
+        if (!grid) return;
 
-    bindEvents() {
-        // Busca em tempo real
-        if (this.searchInput) {
-            this.searchInput.addEventListener('input', (e) => this.filtrarProdutos(e.target.value));
-        }
-
-        // Filtros de categoria
-        document.querySelectorAll('.filter-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-                this.filtroAtual = e.target.dataset.filter;
-                this.renderizarProdutos();
-            });
-        });
-
-        // Finalizar Venda
-        if (this.btnFinalizar) {
-            this.btnFinalizar.addEventListener('click', () => this.finalizarVenda());
-        }
-
-        // Limpar Carrinho
-        if (this.btnLimpar) {
-            this.btnLimpar.addEventListener('click', () => {
-                this.carrinho = [];
-                this.renderizarCarrinho();
-            });
-        }
-    },
-
-    async carregarProdutos() {
         try {
-            // Tenta buscar da API
-            this.produtos = await window.api.getProdutos();
-            console.log('Produtos carregados:', this.produtos);
-            this.renderizarProdutos();
+            const produtos = await API.getProdutos();
+            grid.innerHTML = '';
+
+            if (produtos.length === 0) {
+                grid.innerHTML = '<div class="aviso-vazio" style="padding: 20px; text-align: center; color: #64748b;">Nenhum produto disponível para venda.</div>';
+                return;
+            }
+
+            produtos.forEach(produto => {
+                const card = document.createElement('div');
+                card.className = `produto-card ${produto.estoque <= 0 ? 'sem-estoque' : ''}`;
+                card.innerHTML = `
+                    <div class="produto-info">
+                        <h4>${produto.nome}</h4>
+                        <span class="categoria-badge">${produto.categoria}</span>
+                        <p class="preco">${Utils.formatCurrency(produto.preco)}</p>
+                        <p class="estoque-qtd">Stock: ${produto.estoque}</p>
+                    </div>
+                `;
+
+                if (produto.estoque > 0) {
+                    card.addEventListener('click', () => adicionarAoCarrinho(produto));
+                }
+
+                grid.appendChild(card);
+            });
         } catch (error) {
-            console.error('Erro ao carregar produtos no PDV:', error);
-            if (this.grid) this.grid.innerHTML = '<p style="padding:20px; color:red;">Erro ao conectar com a base de dados.</p>';
+            Utils.log('PDV_RENDER_PRODUTOS', error);
         }
-    },
+    };
 
-    renderizarProdutos(lista = null) {
-        if (!this.grid) return;
+    // Adiciona item ao carrinho ou incrementa quantidade
+    const adicionarAoCarrinho = (produto) => {
+        const itemExistente = carrinho.find(item => String(item.id) === String(produto.id));
 
-        const produtosParaExibir = lista || this.produtos.filter(p => {
-            const matchesFiltro = this.filtroAtual === 'todos' || p.categoria === this.filtroAtual;
-            return matchesFiltro;
-        });
-
-        if (produtosParaExibir.length === 0) {
-            this.grid.innerHTML = '<p style="grid-column: 1/-1; text-align:center; padding:20px; color:#64748b;">Nenhum produto encontrado.</p>';
-            return;
-        }
-
-        this.grid.innerHTML = produtosParaExibir.map(p => {
-            const estoque = p.estoque || p.quantidade || 0;
-            const isSemEstoque = estoque <= 0;
-            
-            return `
-                <div class="produto-card ${isSemEstoque ? 'sem-estoque' : ''}" 
-                     onclick="${isSemEstoque ? '' : `PDV.adicionarAoCarrinho(${p.id})`}">
-                    <div class="categoria-badge">${p.categoria}</div>
-                    <h4>${p.nome}</h4>
-                    <p class="preco">R$ ${parseFloat(p.preco).toFixed(2)}</p>
-                    <small class="${estoque < 5 ? 'estoque-critico' : ''}">Estoque: ${estoque}</small>
-                </div>
-            `;
-        }).join('');
-    },
-
-    filtrarProdutos(termo) {
-        const query = termo.toLowerCase();
-        const filtrados = this.produtos.filter(p => 
-            p.nome.toLowerCase().includes(query) && 
-            (this.filtroAtual === 'todos' || p.categoria === this.filtroAtual)
-        );
-        this.renderizarProdutos(filtrados);
-    },
-
-    adicionarAoCarrinho(id) {
-        const produto = this.produtos.find(p => p.id === id);
-        if (!produto) return;
-
-        const itemNoCarrinho = this.carrinho.find(item => item.id === id);
-
-        if (itemNoCarrinho) {
-            itemNoCarrinho.quantidade++;
+        if (itemExistente) {
+            if (itemExistente.quantidade < produto.estoque) {
+                itemExistente.quantidade++;
+            } else {
+                Utils.showToast('Limite de stock atingido para este item.', 'error');
+                return;
+            }
         } else {
-            this.carrinho.push({
+            carrinho.push({
                 id: produto.id,
                 nome: produto.nome,
                 preco: produto.preco,
@@ -121,74 +63,115 @@ const PDV = {
             });
         }
 
-        this.renderizarCarrinho();
-    },
+        renderCarrinho();
+        
+        // Limpa o campo de busca para a próxima venda
+        const searchInput = document.getElementById('search-produto');
+        if (searchInput) {
+            searchInput.value = '';
+            // Se houver uma função de filtro global, poderia ser chamada aqui
+        }
+    };
 
-    removerDoCarrinho(id) {
-        this.carrinho = this.carrinho.filter(item => item.id !== id);
-        this.renderizarCarrinho();
-    },
+    // Atualiza a visualização do carrinho e totais
+    const renderCarrinho = () => {
+        const container = document.getElementById('carrinho-itens');
+        const totalEl = document.getElementById('total');
+        if (!container) return;
 
-    renderizarCarrinho() {
-        if (!this.carrinhoContainer) return;
-
-        if (this.carrinho.length === 0) {
-            this.carrinhoContainer.innerHTML = '<div class="carrinho-vazio"><i class="fas fa-cart-plus"></i><p>Selecione produtos para começar</p></div>';
-            this.atualizarTotais();
+        if (carrinho.length === 0) {
+            container.innerHTML = '<div class="carrinho-vazio" style="padding: 20px; text-align: center; color: #94a3b8;"><p>Carrinho vazio</p></div>';
+            if (totalEl) totalEl.innerText = 'R$ 0,00';
             return;
         }
 
-        this.carrinhoContainer.innerHTML = this.carrinho.map(item => `
+        container.innerHTML = carrinho.map((item, index) => `
             <div class="carrinho-item">
                 <div class="item-info">
-                    <strong>${item.nome}</strong><br>
-                    <small>${item.quantidade}x R$ ${parseFloat(item.preco).toFixed(2)}</small>
+                    <p style="margin:0;"><strong>${item.nome}</strong></p>
+                    <span style="font-size: 0.85rem; color: #64748b;">${item.quantidade}x ${Utils.formatCurrency(item.preco)}</span>
                 </div>
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <strong>R$ ${(item.quantidade * item.preco).toFixed(2)}</strong>
-                    <button class="btn-remove" onclick="PDV.removerDoCarrinho(${item.id})">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
+                <button class="btn-remove" onclick="window.removerDoCarrinho(${index})">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
         `).join('');
 
-        this.atualizarTotais();
-    },
+        const total = carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0);
+        if (totalEl) totalEl.innerText = Utils.formatCurrency(total);
+    };
 
-    atualizarTotais() {
-        const total = this.carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0);
-        if (this.subtotalEl) this.subtotalEl.innerText = `R$ ${total.toFixed(2)}`;
-        if (this.totalEl) this.totalEl.innerText = `R$ ${total.toFixed(2)}`;
-    },
+    // Remove item do carrinho (Exposta globalmente)
+    window.removerDoCarrinho = (index) => {
+        carrinho.splice(index, 1);
+        renderCarrinho();
+    };
 
-    async finalizarVenda() {
-        if (this.carrinho.length === 0) {
-            alert("O carrinho está vazio!");
+    // Finaliza a venda capturando a forma de pagamento
+    const finalizarVenda = async () => {
+        if (carrinho.length === 0) {
+            Utils.showToast('O carrinho está vazio!', 'error');
             return;
         }
 
-        const dadosVenda = {
-            itens: this.carrinho,
-            total: this.carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0),
-            pagamento: document.getElementById('forma-pagamento').value,
-            observacoes: document.getElementById('observacoes').value,
-            data: new Date().toISOString()
-        };
-
         try {
-            const sucesso = await window.api.salvarVenda(dadosVenda);
-            if (sucesso) {
-                alert("Venda realizada com sucesso!");
-                this.carrinho = [];
-                this.renderizarCarrinho();
-                await this.carregarProdutos(); // Atualiza o estoque na tela
-            }
-        } catch (error) {
-            alert("Erro ao finalizar venda.");
-        }
-    }
-};
+            // Captura a forma de pagamento selecionada no Select
+            const formaPagamentoEl = document.getElementById('forma-pagamento');
+            const formaPagamento = formaPagamentoEl ? formaPagamentoEl.value : 'Dinheiro';
 
-// Expõe globalmente
-window.PDV = PDV;
+            const vendaData = {
+                data: new Date().toISOString(),
+                itens: [...carrinho],
+                total: carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0),
+                pagamento: formaPagamento
+            };
+
+            // Grava na API
+            await API.salvarVenda(vendaData);
+            
+            Utils.showToast(`Venda finalizada com ${formaPagamento}!`);
+            
+            // Limpa o estado
+            carrinho = [];
+            renderCarrinho();
+            
+            // Volta o select para a primeira opção (Dinheiro)
+            if (formaPagamentoEl) formaPagamentoEl.selectedIndex = 0;
+            
+            // Atualiza o grid de produtos (devido à baixa de stock)
+            await renderProdutosPDV();
+            
+            // Notifica outros módulos (Relatórios/Estoque)
+            window.dispatchEvent(new CustomEvent('vendaFinalizada'));
+            window.dispatchEvent(new CustomEvent('produtosUpdated'));
+
+        } catch (error) {
+            Utils.log('PDV_FINALIZAR_VENDA', error);
+            Utils.showToast('Erro ao processar venda.', 'error');
+        }
+    };
+
+    // Event Listeners
+    document.getElementById('btn-finalizar')?.addEventListener('click', finalizarVenda);
+    document.getElementById('btn-limpar')?.addEventListener('click', () => {
+        if (confirm('Deseja limpar o carrinho?')) {
+            carrinho = [];
+            renderCarrinho();
+        }
+    });
+
+    // Atalho F8 para finalizar venda
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'F8') {
+            e.preventDefault();
+            finalizarVenda();
+        }
+    });
+
+    // Escuta atualizações de produtos feitas em outras abas
+    window.addEventListener('produtosUpdated', renderProdutosPDV);
+
+    // Inicialização da página
+    renderProdutosPDV();
+    renderCarrinho();
+});

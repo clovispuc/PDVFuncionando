@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema PDV Pro - Gestão Total</title>
+    <title>Sistema PDV Control</title>
     
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
     <link rel="stylesheet" href="css/style.css">
     
     <style>
@@ -25,6 +24,11 @@
         .carrinho-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #f1f5f9; background: #fff; margin-bottom: 8px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         .btn-remove { background: #fee2e2; color: #ef4444; border: none; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; transition: 0.2s; }
         .btn-remove:hover { background: #ef4444; color: #fff; }
+
+        /* Estilo para o seletor de pagamento no carrinho */
+        .payment-box { margin-top: 15px; padding-top: 15px; border-top: 1px dashed #cbd5e1; }
+        .payment-box label { display: block; font-size: 0.8rem; font-weight: 600; color: #64748b; margin-bottom: 5px; }
+        .payment-box select { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1; background: #f8fafc; font-family: inherit; }
 
         /* Utilitários */
         .loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.8); display: none; align-items: center; justify-content: center; z-index: 9999; }
@@ -80,54 +84,36 @@
                             <i class="fas fa-search"></i>
                             <input type="text" id="search-produto" placeholder="Buscar por nome ou código...">
                         </div>
-                        <div class="filter-group">
-                            <button class="filter-btn active" data-filter="todos">Todos</button>
-                            <button class="filter-btn" data-filter="bebida">Bebidas</button>
-                            <button class="filter-btn" data-filter="refeicao">Refeições</button>
-                        </div>
+                        <div id="filter-tabs" class="filter-group"></div>
                     </div>
-
-                    <div id="produtos-grid" class="produtos-grid">
-                        </div>
+                    <div id="produtos-grid" class="produtos-grid"></div>
                 </div>
 
                 <div class="pdv-right">
                     <div class="cart-card">
                         <div class="cart-header">
-                            <h3><i class="fas fa-shopping-basket"></i> Carrinho Atual</h3>
-                            <button class="btn-text" id="btn-limpar">Limpar Tudo</button>
+                            <h3><i class="fas fa-shopping-basket"></i> Carrinho</h3>
+                            <button class="btn-text" id="btn-limpar">Limpar</button>
                         </div>
-
-                        <div id="carrinho-itens" class="cart-body">
-                            <div class="carrinho-vazio">
-                                <i class="fas fa-cart-plus"></i>
-                                <p>Selecione produtos para começar</p>
-                            </div>
-                        </div>
-
+                        <div id="carrinho-itens" class="cart-body"></div>
                         <div class="cart-footer">
-                            <div class="summary-row">
-                                <span>Subtotal</span>
-                                <span id="subtotal">R$ 0,00</span>
-                            </div>
                             <div class="summary-row total">
-                                <span>Total a Pagar</span>
+                                <span>Total</span>
                                 <strong id="total">R$ 0,00</strong>
                             </div>
-
+                            
                             <div class="payment-box">
-                                <label>Forma de Pagamento</label>
+                                <label>Forma de Recebimento</label>
                                 <select id="forma-pagamento">
-                                    <option value="dinheiro">Dinheiro (Cédulas)</option>
-                                    <option value="pix">PIX Transferência</option>
-                                    <option value="cartao_debito">Cartão de Débito</option>
-                                    <option value="cartao_credito">Cartão de Crédito</option>
+                                    <option value="Dinheiro">Dinheiro</option>
+                                    <option value="PIX">PIX</option>
+                                    <option value="Cartão de Débito">Cartão de Débito</option>
+                                    <option value="Cartão de Crédito">Cartão de Crédito</option>
                                 </select>
-                                <textarea id="observacoes" placeholder="Observações da venda (opcional)..."></textarea>
                             </div>
 
-                            <button id="btn-finalizar" class="btn-complete-order">
-                                <i class="fas fa-check-circle"></i> FINALIZAR VENDA (F8)
+                            <button id="btn-finalizar" class="btn-complete-order" style="margin-top: 15px;">
+                                FINALIZAR VENDA (F8)
                             </button>
                         </div>
                     </div>
@@ -137,51 +123,37 @@
 
         <section id="produtos-page" class="page">
             <div class="page-header">
-                <h2>Gestão de Catálogo</h2>
-                <button class="btn-primary" id="btn-novo-produto">
-                    <i class="fas fa-plus"></i> Adicionar Produto
-                </button>
+                <h2>Produtos</h2>
+                <button class="btn-primary" id="btn-novo-produto">Novo Produto</button>
             </div>
-
             <div class="card-table">
                 <table class="data-table">
                     <thead>
                         <tr>
                             <th>Produto</th>
                             <th>Categoria</th>
-                            <th>Preço Venda</th>
-                            <th>Estoque Atual</th>
+                            <th>Preço</th>
+                            <th>Estoque</th>
                             <th>Status</th>
                             <th>Ações</th>
                         </tr>
                     </thead>
-                    <tbody id="produtos-tbody">
-                        </tbody>
+                    <tbody id="produtos-tbody"></tbody>
                 </table>
             </div>
         </section>
 
         <section id="estoque-page" class="page">
-            <div class="page-header">
-                <h2>Movimentação de Estoque</h2>
-                <div class="header-actions">
-                    <button class="btn-success" id="btn-entrada"><i class="fas fa-arrow-down"></i> Entrada</button>
-                    <button class="btn-danger" id="btn-saida"><i class="fas fa-arrow-up"></i> Saída</button>
-                </div>
-            </div>
-            
+            <div class="page-header"><h2>Gestão de Estoque</h2></div>
             <div id="estoque-alerts"></div>
-
             <div class="card-table">
-                <h3>Histórico Recente</h3>
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>Data</th>
                             <th>Produto</th>
-                            <th>Tipo</th>
-                            <th>Qtd</th>
-                            <th>Motivo</th>
+                            <th>Categoria</th>
+                            <th>Qtd Atual</th>
+                            <th>Ações</th>
                         </tr>
                     </thead>
                     <tbody id="movimentacoes-tbody"></tbody>
@@ -190,41 +162,21 @@
         </section>
 
         <section id="vendas-page" class="page">
-            <div class="page-header">
-                <h2>Resumo Financeiro</h2>
-            </div>
-
+            <div class="page-header"><h2>Relatórios</h2></div>
             <div class="stats-grid">
-                <div class="stat-card">
-                    <span>Faturamento Hoje</span>
-                    <h2 id="stat-hoje">R$ 0,00</h2>
-                </div>
-                <div class="stat-card">
-                    <span>Vendas Realizadas</span>
-                    <h2 id="stat-vendas-hoje">0</h2>
-                </div>
-                <div class="stat-card">
-                    <span>Ticket Médio</span>
-                    <h2 id="stat-ticket">R$ 0,00</h2>
-                </div>
+                <div class="stat-card"><span>Hoje</span><h2 id="stat-hoje">R$ 0,00</h2></div>
+                <div class="stat-card"><span>Vendas</span><h2 id="stat-vendas-hoje">0</h2></div>
+                <div class="stat-card"><span>Ticket Médio</span><h2 id="stat-ticket">R$ 0,00</h2></div>
             </div>
-
             <div class="card-table">
                 <table class="data-table">
                     <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Data/Hora</th>
-                            <th>Total</th>
-                            <th>Pagamento</th>
-                            <th>Ações</th>
-                        </tr>
+                        <tr><th>ID</th><th>Data</th><th>Total</th><th>Pagamento</th><th>Ações</th></tr>
                     </thead>
                     <tbody id="vendas-tbody"></tbody>
                 </table>
             </div>
         </section>
-
     </main>
 
     <div class="modal" id="modal-produto">
@@ -235,54 +187,45 @@
             </div>
             <form id="form-produto">
                 <input type="hidden" id="produto-id">
-                <div class="form-row">
-                    <div class="form-group full">
-                        <label>Nome do Produto*</label>
-                        <input type="text" id="produto-nome" required>
-                    </div>
+                <div class="form-group">
+                    <label>Nome</label>
+                    <input type="text" id="produto-nome" required>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label>Categoria</label>
-                        <select id="produto-categoria">
-                            <option value="bebida">Bebida</option>
-                            <option value="refeicao">Refeição</option>
-                        </select>
+                        <input type="text" id="produto-categoria-input" required>
                     </div>
                     <div class="form-group">
-                        <label>Preço de Venda (R$)*</label>
+                        <label>Preço</label>
                         <input type="number" id="produto-preco" step="0.01" required>
                     </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label>Estoque Atual</label>
+                        <label>Estoque</label>
                         <input type="number" id="produto-estoque" required>
                     </div>
                     <div class="form-group">
-                        <label>Estoque Mínimo</label>
+                        <label>Mínimo</label>
                         <input type="number" id="produto-estoque-minimo" value="5">
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn-secondary close-modal">Cancelar</button>
-                    <button type="submit" id="btn-salvar-produto" class="btn-primary">Gravar Dados</button>
+                    <button type="submit" class="btn-primary">Gravar Produto</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <div id="loading" class="loading-overlay"><div class="spinner"></div></div>
     <div id="toast-container" class="toast-container"></div>
 
     <script src="js/api.js"></script>
     <script src="js/utils.js"></script>
-    
     <script src="js/pdv.js"></script>
     <script src="js/produtos.js"></script>
     <script src="js/estoque.js"></script>
     <script src="js/vendas.js"></script>
-    
     <script src="js/app.js"></script>
 
 </body>

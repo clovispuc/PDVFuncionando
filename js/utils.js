@@ -1,176 +1,103 @@
-// Funções utilitárias
+// js/utils.js
 
 const Utils = {
-    // Formatar moeda brasileira
-    formatMoney(value) {
+    // Formata valores para moeda brasileira
+    formatCurrency: (value) => {
         return new Intl.NumberFormat('pt-BR', {
             style: 'currency',
             currency: 'BRL'
         }).format(value);
     },
 
-    // Formatar data
-    formatDate(date) {
-        if (!date) return '';
-        const d = new Date(date);
-        return d.toLocaleDateString('pt-BR');
-    },
-
-    // Formatar data e hora
-    formatDateTime(date) {
-        if (!date) return '';
-        const d = new Date(date);
-        return d.toLocaleString('pt-BR');
-    },
-
-    // Formatar hora
-    formatTime(date) {
-        if (!date) return '';
-        const d = new Date(date);
-        return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-    },
-
-    // Mostrar loading
-    showLoading() {
-        document.getElementById('loading').classList.add('active');
-    },
-
-    // Esconder loading
-    hideLoading() {
-        document.getElementById('loading').classList.remove('active');
-    },
-
-    // Mostrar toast notification
-    showToast(message, type = 'info') {
+    // Sistema de feedback visual (Toast)
+    showToast: (message, type = 'success') => {
         const container = document.getElementById('toast-container');
+        if (!container) return;
+
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
-        
-        let icon = 'fa-info-circle';
-        if (type === 'success') icon = 'fa-check-circle';
-        if (type === 'error') icon = 'fa-exclamation-circle';
-        if (type === 'warning') icon = 'fa-exclamation-triangle';
-        
-        toast.innerHTML = `
-            <i class="fas ${icon}"></i>
-            <div class="toast-message">${message}</div>
+        toast.style.cssText = `
+            background: ${type === 'success' ? '#10b981' : '#ef4444'};
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-top: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            animation: slideIn 0.3s ease forwards;
         `;
-        
+        toast.innerHTML = message;
+
         container.appendChild(toast);
-        
-        // Remover após 4 segundos
+
         setTimeout(() => {
-            toast.style.animation = 'toastSlideIn 0.3s ease reverse';
+            toast.style.animation = 'slideOut 0.3s ease forwards';
             setTimeout(() => toast.remove(), 300);
-        }, 4000);
+        }, 3000);
     },
 
-    // Confirmar ação
-    confirm(message) {
-        return window.confirm(message);
-    },
-
-    // Abrir modal
-    openModal(modalId) {
-        document.getElementById(modalId).classList.add('active');
-    },
-
-    // Fechar modal
-    closeModal(modalId) {
-        document.getElementById(modalId).classList.remove('active');
-    },
-
-    // Atualizar data/hora no header
-    updateDateTime() {
-        const now = new Date();
-        const dateEl = document.getElementById('current-date');
-        const timeEl = document.getElementById('current-time');
+    // Sistema de Logs para Depuração
+    log: (context, error) => {
+        const timestamp = new Date().toISOString();
+        const errorMessage = error.message || error;
+        const logEntry = { timestamp, context, message: errorMessage, stack: error.stack || 'N/A' };
         
-        if (dateEl) {
-            dateEl.textContent = now.toLocaleDateString('pt-BR', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-            });
-        }
+        console.group(`🚨 LOG DE ERRO PDV: ${context}`);
+        console.error(logEntry);
+        console.groupEnd();
+
+        // Salva no localStorage para exportação posterior
+        const logs = JSON.parse(localStorage.getItem('pdv_logs') || '[]');
+        logs.push(logEntry);
+        // Mantém apenas os últimos 100 logs para não sobrecarregar o navegador
+        localStorage.setItem('pdv_logs', JSON.stringify(logs.slice(-100)));
+    },
+
+    /**
+     * NOVA FUNÇÃO: Gera e baixa um arquivo .txt com todos os logs salvos
+     */
+    exportLogs: () => {
+        const logs = JSON.parse(localStorage.getItem('pdv_logs') || '[]');
         
-        if (timeEl) {
-            timeEl.textContent = now.toLocaleTimeString('pt-BR', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-            });
+        if (logs.length === 0) {
+            Utils.showToast('Não há logs registrados para exportar.', 'error');
+            return;
         }
-    },
 
-    // Debounce para otimizar buscas
-    debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
-    },
+        let content = "=== RELATÓRIO DE ERROS DO SISTEMA PDV ===\n";
+        content += `Gerado em: ${new Date().toLocaleString('pt-BR')}\n`;
+        content += "-------------------------------------------\n\n";
 
-    // Validar formulário
-    validateForm(formId) {
-        const form = document.getElementById(formId);
-        return form.checkValidity();
-    },
+        logs.forEach((l, i) => {
+            content += `ERRO #${i + 1}\n`;
+            content += `Data: ${l.timestamp}\n`;
+            content += `Contexto: ${l.context}\n`;
+            content += `Mensagem: ${l.message}\n`;
+            content += `Rastro (Stack): ${l.stack}\n`;
+            content += "-------------------------------------------\n";
+        });
 
-    // Limpar formulário
-    clearForm(formId) {
-        const form = document.getElementById(formId);
-        form.reset();
-    },
-
-    // Começar do dia (00:00:00)
-    startOfDay(date = new Date()) {
-        const d = new Date(date);
-        d.setHours(0, 0, 0, 0);
-        return d;
-    },
-
-    // Fim do dia (23:59:59)
-    endOfDay(date = new Date()) {
-        const d = new Date(date);
-        d.setHours(23, 59, 59, 999);
-        return d;
-    },
-
-    // Começar da semana
-    startOfWeek(date = new Date()) {
-        const d = new Date(date);
-        const day = d.getDay();
-        const diff = d.getDate() - day;
-        d.setDate(diff);
-        d.setHours(0, 0, 0, 0);
-        return d;
-    },
-
-    // Sanitizar HTML para evitar XSS
-    escapeHtml(text) {
-        const map = {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#039;'
-        };
-        return text.replace(/[&<>"']/g, m => map[m]);
-    },
-
-    // Gerar ID único
-    generateId() {
-        return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        // Cria o arquivo e dispara o download
+        const blob = new Blob([content], { type: 'text/plain' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `logs_pdv_${new Date().getTime()}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        
+        Utils.showToast('Arquivo de log gerado com sucesso!');
     }
 };
 
-// Inicializar data/hora e atualizar a cada segundo
-Utils.updateDateTime();
-setInterval(() => Utils.updateDateTime(), 1000);
+// CSS básico para animação do toast
+if (!document.getElementById('utils-styles')) {
+    const style = document.createElement('style');
+    style.id = 'utils-styles';
+    style.innerHTML = `
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+    `;
+    document.head.appendChild(style);
+}
