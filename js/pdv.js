@@ -6,7 +6,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     let carrinho = [];
 
-    // Função para renderizar os produtos no grid do PDV (Exposta para o App.js)
+    // Função para renderizar os produtos no grid do PDV
     window.renderProdutosPDV = async () => {
         const grid = document.getElementById('produtos-grid');
         if (!grid) return;
@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
             grid.innerHTML = '';
 
             if (produtos.length === 0) {
-                grid.innerHTML = '<div class="aviso-vazio" style="padding: 20px; text-align: center; color: #64748b;">Nenhum produto disponível para venda.</div>';
+                grid.innerHTML = '<div class="aviso-vazio" style="padding: 20px; text-align: center; color: #64748b;">Nenhum produto cadastrado.</div>';
                 return;
             }
 
@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Adiciona item ao carrinho ou incrementa quantidade
+    // Adiciona item ou incrementa
     const adicionarAoCarrinho = (produto) => {
         const itemExistente = carrinho.find(item => String(item.id) === String(produto.id));
 
@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (itemExistente.quantidade < produto.estoque) {
                 itemExistente.quantidade++;
             } else {
-                Utils.showToast('Limite de stock atingido para este item.', 'error');
+                Utils.showToast('Limite de stock atingido.', 'error');
                 return;
             }
         } else {
@@ -59,21 +59,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 id: produto.id,
                 nome: produto.nome,
                 preco: produto.preco,
-                quantidade: 1
+                quantidade: 1,
+                estoqueMax: produto.estoque // Guardamos para validar edição manual
             });
         }
 
         renderCarrinho();
-        
-        // Limpa o campo de busca para a próxima venda
-        const searchInput = document.getElementById('search-produto');
-        if (searchInput) {
-            searchInput.value = '';
-            // Se houver uma função de filtro global, poderia ser chamada aqui
-        }
     };
 
-    // Atualiza a visualização do carrinho e totais
+    // Atualiza a quantidade manualmente via input no carrinho
+    window.atualizarQtdCarrinho = (index, novaQtd) => {
+        const qtd = parseInt(novaQtd);
+        const item = carrinho[index];
+
+        if (isNaN(qtd) || qtd <= 0) {
+            carrinho.splice(index, 1);
+        } else if (qtd > item.estoqueMax) {
+            Utils.showToast(`Apenas ${item.estoqueMax} unidades em estoque.`, 'error');
+            item.quantidade = item.estoqueMax;
+        } else {
+            item.quantidade = qtd;
+        }
+        renderCarrinho();
+    };
+
+    // Renderiza o carrinho com input de quantidade e área de observação
     const renderCarrinho = () => {
         const container = document.getElementById('carrinho-itens');
         const totalEl = document.getElementById('total');
@@ -85,29 +95,43 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        container.innerHTML = carrinho.map((item, index) => `
-            <div class="carrinho-item">
-                <div class="item-info">
-                    <p style="margin:0;"><strong>${item.nome}</strong></p>
-                    <span style="font-size: 0.85rem; color: #64748b;">${item.quantidade}x ${Utils.formatCurrency(item.preco)}</span>
+        let html = carrinho.map((item, index) => `
+            <div class="carrinho-item" style="display: flex; align-items: center; gap: 10px;">
+                <div style="flex: 1;">
+                    <p style="margin:0; font-weight: 600;">${item.nome}</p>
+                    <span style="font-size: 0.8rem; color: #64748b;">${Utils.formatCurrency(item.preco)} un.</span>
                 </div>
+                <input type="number" 
+                       value="${item.quantidade}" 
+                       min="1" 
+                       onchange="window.atualizarQtdCarrinho(${index}, this.value)"
+                       style="width: 50px; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; text-align: center;">
                 <button class="btn-remove" onclick="window.removerDoCarrinho(${index})">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
         `).join('');
 
+        // Adiciona o campo de Observações ao final da lista de itens
+        html += `
+            <div style="margin-top: 15px; padding: 10px; border-top: 1px solid #f1f5f9;">
+                <label style="font-size: 0.75rem; font-weight: 700; color: #64748b; display: block; margin-bottom: 5px;">OBSERVAÇÕES DA VENDA</label>
+                <textarea id="venda-obs" placeholder="Ex: Sem gelo, embrulhar para presente..." 
+                    style="width: 100%; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; font-size: 0.85rem; resize: none; font-family: inherit;"></textarea>
+            </div>
+        `;
+
+        container.innerHTML = html;
+
         const total = carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0);
         if (totalEl) totalEl.innerText = Utils.formatCurrency(total);
     };
 
-    // Remove item do carrinho (Exposta globalmente)
     window.removerDoCarrinho = (index) => {
         carrinho.splice(index, 1);
         renderCarrinho();
     };
 
-    // Finaliza a venda capturando a forma de pagamento
     const finalizarVenda = async () => {
         if (carrinho.length === 0) {
             Utils.showToast('O carrinho está vazio!', 'error');
@@ -115,33 +139,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            // Captura a forma de pagamento selecionada no Select
             const formaPagamentoEl = document.getElementById('forma-pagamento');
-            const formaPagamento = formaPagamentoEl ? formaPagamentoEl.value : 'Dinheiro';
+            const obsEl = document.getElementById('venda-obs');
 
             const vendaData = {
                 data: new Date().toISOString(),
                 itens: [...carrinho],
                 total: carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0),
-                pagamento: formaPagamento
+                pagamento: formaPagamentoEl ? formaPagamentoEl.value : 'Dinheiro',
+                observacao: obsEl ? obsEl.value : '' // Captura a observação
             };
 
-            // Grava na API
             await API.salvarVenda(vendaData);
             
-            Utils.showToast(`Venda finalizada com ${formaPagamento}!`);
-            
-            // Limpa o estado
+            Utils.showToast('Venda finalizada!');
             carrinho = [];
             renderCarrinho();
             
-            // Volta o select para a primeira opção (Dinheiro)
             if (formaPagamentoEl) formaPagamentoEl.selectedIndex = 0;
             
-            // Atualiza o grid de produtos (devido à baixa de stock)
             await renderProdutosPDV();
-            
-            // Notifica outros módulos (Relatórios/Estoque)
             window.dispatchEvent(new CustomEvent('vendaFinalizada'));
             window.dispatchEvent(new CustomEvent('produtosUpdated'));
 
@@ -151,27 +168,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Event Listeners
     document.getElementById('btn-finalizar')?.addEventListener('click', finalizarVenda);
     document.getElementById('btn-limpar')?.addEventListener('click', () => {
-        if (confirm('Deseja limpar o carrinho?')) {
+        if (confirm('Limpar carrinho?')) {
             carrinho = [];
             renderCarrinho();
         }
     });
 
-    // Atalho F8 para finalizar venda
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'F8') {
-            e.preventDefault();
-            finalizarVenda();
-        }
+        if (e.key === 'F8') { e.preventDefault(); finalizarVenda(); }
     });
 
-    // Escuta atualizações de produtos feitas em outras abas
     window.addEventListener('produtosUpdated', renderProdutosPDV);
-
-    // Inicialização da página
     renderProdutosPDV();
     renderCarrinho();
 });

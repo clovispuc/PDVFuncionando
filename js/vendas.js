@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const vendasOrdenadas = [...vendas].sort((a, b) => new Date(b.data) - new Date(a.data));
 
             if (vendasOrdenadas.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">Nenhuma venda registrada hoje.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">Nenhuma venda registrada.</td></tr>';
                 return;
             }
 
@@ -68,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         </span>
                     </td>
                     <td>
-                        <button class="btn-edit" onclick="verDetalhesVenda('${venda.id}')" title="Ver Itens">
+                        <button class="btn-edit" onclick="verDetalhesVenda('${venda.id}')" title="Ver Detalhes">
                             <i class="fas fa-eye"></i>
                         </button>
                     </td>
@@ -80,19 +80,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Função para exibir detalhes simplificados da venda
+    // Função para exibir detalhes completos da venda, incluindo observações
     window.verDetalhesVenda = async (id) => {
         try {
             const vendas = await API.getVendas();
             const venda = vendas.find(v => String(v.id) === String(id));
             
             if (venda) {
-                const listaItens = venda.itens.map(i => `- ${i.nome} (${i.quantidade}x)`).join('\n');
-                const msg = `Detalhes da Venda #${id.toString().slice(-6)}\n` +
+                const listaItens = venda.itens.map(i => `• ${i.nome} (${i.quantidade}x)`).join('\n');
+                const obs = venda.observacao && venda.observacao.trim() !== "" 
+                            ? venda.observacao 
+                            : "Nenhuma observação registrada.";
+
+                const msg = `DETALHES DA VENDA #${id.toString().slice(-6)}\n` +
+                            `------------------------------------------\n` +
                             `Data: ${new Date(venda.data).toLocaleString('pt-BR')}\n` +
                             `Pagamento: ${venda.pagamento || 'Dinheiro'}\n\n` +
-                            `Itens:\n${listaItens}\n\n` +
-                            `Total: ${Utils.formatCurrency(venda.total)}`;
+                            `ITENS:\n${listaItens}\n\n` +
+                            `OBSERVAÇÕES:\n${obs}\n\n` +
+                            `------------------------------------------\n` +
+                            `TOTAL: ${Utils.formatCurrency(venda.total)}`;
+                
                 alert(msg);
             }
         } catch (error) {
