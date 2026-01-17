@@ -1,17 +1,17 @@
 /**
- * Módulo de Relatórios e Fluxo de Caixa
- * Responsável por listar as sessões de caixa por operador e detalhar os movimentos.
+ * Módulo de Relatórios e Exportação
+ * Responsável por listar sessões e exportar dados para Excel.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
     
-    // Inicialização do módulo de relatórios
+    // Inicialização do módulo
     const initRelatorios = async () => {
         await renderEstatisticasGerais();
         await renderTabelaSessoes();
     };
 
-    // Calcula estatísticas do dia (soma de todas as sessões de hoje)
+    // Estatísticas do topo da página
     const renderEstatisticasGerais = async () => {
         try {
             const vendas = await API.getVendas();
@@ -35,11 +35,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (elTicket) elTicket.innerText = Utils.formatCurrency(ticketMedio);
 
         } catch (error) {
-            Utils.log('RELATORIO_ESTATISTICAS', error);
+            Utils.log('REL_ESTATS', error);
         }
     };
 
-    // Renderiza a tabela de sessões de caixa (Turnos)
+    // Tabela principal de sessões (Resumo)
     const renderTabelaSessoes = async () => {
         const tbody = document.getElementById('vendas-tbody');
         if (!tbody) return;
@@ -49,78 +49,133 @@ document.addEventListener('DOMContentLoaded', () => {
             const sessoesOrdenadas = [...sessoes].sort((a, b) => new Date(b.dataAbertura) - new Date(a.dataAbertura));
 
             if (sessoesOrdenadas.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">Nenhum histórico de caixa encontrado.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">Nenhum histórico de caixa.</td></tr>';
                 return;
             }
 
             tbody.innerHTML = sessoesOrdenadas.map(sessao => {
                 const dataAbt = new Date(sessao.dataAbertura).toLocaleString('pt-BR');
-                const statusSessao = sessao.dataFechamento ? 'Fechado' : 'Aberto';
-                
                 return `
                     <tr>
-                        <td><strong>${sessao.operador}</strong></td>
+                        <td><strong>${sessao.operador || 'Sistema'}</strong></td>
                         <td>${dataAbt}</td>
                         <td>${Utils.formatCurrency(sessao.saldoInicial)}</td>
                         <td><strong style="color: #2563eb;">${Utils.formatCurrency(sessao.totalVendas || 0)}</strong></td>
                         <td>
-                            <button class="btn-edit" onclick="verDetalhesSessao('${sessao.sessaoId}')" title="Ver Movimentação">
-                                <i class="fas fa-list-check"></i> Ver Itens
+                            <button class="btn-excel detalhado" style="padding: 4px 8px; font-size: 0.7rem;" onclick="window.exportarTurnoIndividual('${sessao.sessaoId}')">
+                                <i class="fas fa-file-download"></i> Planilha Turno
                             </button>
                         </td>
                     </tr>
                 `;
             }).join('');
-
         } catch (error) {
-            Utils.log('RELATORIO_TABELA_SESSOES', error);
+            Utils.log('REL_TABELA', error);
         }
     };
 
     /**
-     * Mostra todas as vendas e itens vendidos numa sessão específica
+     * Exportação Resumida (Todos os Caixas)
      */
-    window.verDetalhesSessao = async (sessaoId) => {
+    const exportarResumoCaixas = async () => {
+        try {
+            const sessoes = await API.getSessoes();
+            if (sessoes.length === 0) { Utils.showToast("Sem dados para exportar", "error"); return; }
+
+            const dados = sessoes.map(s => ({
+                "Operador": s.operador || "---",
+                "Abertura": new Date(s.dataAbertura).toLocaleString('pt-BR'),
+                "Fechamento": s.dataFechamento ? new Date(s.dataFechamento).toLocaleString('pt-BR') : "Aberto",
+                "Fundo Inicial (R$)": s.saldoInicial,
+                "Vendas (R$)": s.totalVendas || 0,
+                "Saldo Final (R$)": s.saldoInicial + (s.totalVendas || 0)
+            }));
+
+            gerarExcel(dados, "Resumo_Geral_Caixas");
+        } catch (e) { alert("Erro ao exportar resumo: " + e.message); }
+    };
+
+    /**
+     * Exportação Detalhada Individual (Por abertura de caixa específica)
+     */
+    window.exportarTurnoIndividual = async (sessaoId) => {
         try {
             const sessoes = await API.getSessoes();
             const vendas = await API.getVendas();
-            
             const sessao = sessoes.find(s => s.sessaoId === sessaoId);
             const vendasDaSessao = vendas.filter(v => v.sessaoId === sessaoId);
 
-            if (!sessao) return;
-
-            let relatorioTexto = `FLUXO DE CAIXA - OPERADOR: ${sessao.operador}\n`;
-            relatorioTexto += `Abertura: ${new Date(sessao.dataAbertura).toLocaleString('pt-BR')}\n`;
-            relatorioTexto += `Fundo Inicial: ${Utils.formatCurrency(sessao.saldoInicial)}\n`;
-            relatorioTexto += `------------------------------------------\n\n`;
-
-            if (vendasDaSessao.length === 0) {
-                relatorioTexto += "Nenhuma venda realizada neste turno.";
-            } else {
-                vendasDaSessao.forEach((v, index) => {
-                    relatorioTexto += `VENDA #${index + 1} - ${v.pagamento}\n`;
-                    v.itens.forEach(item => {
-                        relatorioTexto += `  > ${item.quantidade}x ${item.nome} (${Utils.formatCurrency(item.preco)})\n`;
-                    });
-                    if(v.observacao) relatorioTexto += `  Obs: ${v.observacao}\n`;
-                    relatorioTexto += `  Subtotal: ${Utils.formatCurrency(v.total)}\n\n`;
-                });
+            if (!sessao || vendasDaSessao.length === 0) {
+                Utils.showToast("Não há vendas registradas neste turno", "info");
+                return;
             }
 
-            relatorioTexto += `------------------------------------------\n`;
-            relatorioTexto += `TOTAL VENDIDO NO TURNO: ${Utils.formatCurrency(sessao.totalVendas || 0)}`;
+            const dadosTurno = [];
+            vendasDaSessao.forEach(venda => {
+                venda.itens.forEach(item => {
+                    dadosTurno.push({
+                        "Data/Hora": new Date(venda.data).toLocaleString('pt-BR'),
+                        "Operador": sessao.operador,
+                        "Produto": item.nome,
+                        "Qtd": item.quantidade,
+                        "Preço Unit (R$)": item.preco,
+                        "Total Item (R$)": item.quantidade * item.preco,
+                        "Forma Pagamento": venda.pagamento
+                    });
+                });
+            });
 
-            alert(relatorioTexto);
-
-        } catch (error) {
-            Utils.log('RELATORIO_DETALHES', error);
+            const dataFormatada = new Date(sessao.dataAbertura).toISOString().split('T')[0];
+            gerarExcel(dadosTurno, `Vendas_${sessao.operador}_${dataFormatada}`);
+        } catch (e) {
+            Utils.log('EXPORT_INDIVIDUAL', e);
         }
     };
 
-    // Listener para quando uma venda é finalizada ou caixa fechado
-    window.addEventListener('vendaFinalizada', initRelatorios);
+    /**
+     * Exportação Detalhada Geral (Histórico de todos os itens vendidos)
+     */
+    const exportarRelatorioDetalhado = async () => {
+        try {
+            const vendas = await API.getVendas();
+            if (vendas.length === 0) { Utils.showToast("Sem vendas registradas", "error"); return; }
+
+            const dadosDetalhados = [];
+            vendas.forEach(venda => {
+                venda.itens.forEach(item => {
+                    dadosDetalhados.push({
+                        "Data/Hora": new Date(venda.data).toLocaleString('pt-BR'),
+                        "Operador": venda.operador || "---",
+                        "Produto": item.nome,
+                        "Qtd": item.quantidade,
+                        "Preço Unit (R$)": item.preco,
+                        "Subtotal (R$)": item.quantidade * item.preco,
+                        "Pagamento": venda.pagamento
+                    });
+                });
+            });
+
+            gerarExcel(dadosDetalhados, "Relatorio_Geral_Detalhado");
+        } catch (e) { alert("Erro ao exportar detalhado: " + e.message); }
+    };
+
+    // Função auxiliar para gerar o arquivo
+    const gerarExcel = (json, nomeArquivo) => {
+        if (typeof XLSX === 'undefined') {
+            alert("Erro: Biblioteca Excel não carregada. Verifique o arquivo js/xlsx.full.min.js");
+            return;
+        }
+        const worksheet = XLSX.utils.json_to_sheet(json);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Relatório");
+        XLSX.writeFile(workbook, `${nomeArquivo}.xlsx`);
+        Utils.showToast("Planilha gerada com sucesso!");
+    };
+
+    // Listeners
+    document.getElementById('btn-exportar-excel')?.addEventListener('click', exportarResumoCaixas);
+    document.getElementById('btn-exportar-detalhado')?.addEventListener('click', exportarRelatorioDetalhado);
     
-    // Inicia a renderização
+    window.addEventListener('vendaFinalizada', initRelatorios);
     initRelatorios();
 });

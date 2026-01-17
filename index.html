@@ -21,7 +21,6 @@
         .btn-remove { background: #fee2e2; color: #ef4444; border: none; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; transition: 0.2s; }
         .btn-remove:hover { background: #ef4444; color: #fff; }
 
-        /* Estilos do Painel de Caixa no PDV */
         .caixa-status-bar { background: #fff; border-radius: 8px; padding: 15px; margin-bottom: 15px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
         .caixa-info h4 { margin: 0; font-size: 0.85rem; color: #64748b; }
         .caixa-info p { margin: 0; font-weight: 700; color: #1e293b; font-size: 0.95rem; }
@@ -35,10 +34,15 @@
         .btn-fechar { background: #f1f5f9; color: #ef4444; border: 1px solid #fee2e2; }
         .btn-fechar:hover { background: #ef4444; color: white; }
 
-        /* Posicionamento do X no Modal */
         .modal-header { position: relative; padding-bottom: 15px; border-bottom: 1px solid #f1f5f9; margin-bottom: 15px; }
         .close-modal { position: absolute; top: 0; right: 0; background: #f1f5f9; border: none; font-size: 1.2rem; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #64748b; transition: 0.2s; }
         .close-modal:hover { background: #fee2e2; color: #ef4444; }
+
+        .header-actions { display: flex; gap: 10px; }
+        .btn-excel { background: #16a34a; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.8rem; display: flex; align-items: center; gap: 8px; transition: 0.2s; }
+        .btn-excel:hover { background: #15803d; transform: translateY(-1px); }
+        .btn-excel.detalhado { background: #0369a1; }
+        .btn-excel.detalhado:hover { background: #075985; }
 
         .payment-box { margin-top: 15px; padding-top: 15px; border-top: 1px dashed #cbd5e1; }
         .payment-box label { display: block; font-size: 0.8rem; font-weight: 600; color: #64748b; margin-bottom: 5px; }
@@ -145,7 +149,17 @@
         </section>
 
         <section id="vendas-page" class="page">
-            <div class="page-header"><h2>Relatórios de Fluxo de Caixa</h2></div>
+            <div class="page-header">
+                <h2>Relatórios de Fluxo de Caixa</h2>
+                <div class="header-actions">
+                    <button class="btn-excel detalhado" id="btn-exportar-detalhado">
+                        <i class="fas fa-list-ol"></i> Relatório Geral Itens
+                    </button>
+                    <button class="btn-excel" id="btn-exportar-excel">
+                        <i class="fas fa-file-excel"></i> Resumo de Caixas
+                    </button>
+                </div>
+            </div>
             <div class="stats-grid">
                 <div class="stat-card"><span>Faturamento Hoje</span><h2 id="stat-hoje">R$ 0,00</h2></div>
                 <div class="stat-card"><span>Qtd Vendas</span><h2 id="stat-vendas-hoje">0</h2></div>
@@ -167,17 +181,9 @@
                 <button class="close-modal" onclick="window.fecharModalCaixa()">&times;</button>
             </div>
             <form id="form-abrir-caixa">
-                <div class="form-group">
-                    <label>Nome do Operador</label>
-                    <input type="text" id="caixa-operador-input" required placeholder="Ex: Clovis">
-                </div>
-                <div class="form-group">
-                    <label>Valor de Fundo (R$)</label>
-                    <input type="number" id="caixa-fundo-input" step="0.01" value="0.00" required>
-                </div>
-                <div class="modal-footer">
-                    <button type="submit" class="btn-primary" style="width: 100%;">ABRIR TURNO</button>
-                </div>
+                <div class="form-group"><label>Nome do Operador</label><input type="text" id="caixa-operador-input" required placeholder="Ex: Clovis"></div>
+                <div class="form-group"><label>Valor de Fundo (R$)</label><input type="number" id="caixa-fundo-input" step="0.01" value="0.00" required></div>
+                <div class="modal-footer"><button type="submit" class="btn-primary" style="width: 100%;">ABRIR TURNO</button></div>
             </form>
         </div>
     </div>
@@ -205,6 +211,8 @@
     </div>
 
     <div id="toast-container" class="toast-container"></div>
+
+    <script src="js/xlsx.full.min.js"></script>
 
     <script src="js/api.js"></script>
     <script src="js/utils.js"></script>
