@@ -10,30 +10,43 @@
     <link rel="stylesheet" href="css/style.css">
     
     <style>
-        /* Estilos de transição e estados globais */
         .page { display: none; }
         .page.active { display: block; animation: fadeIn 0.3s ease; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
-        /* Feedback Visual */
         .categoria-badge { background: #f1f5f9; color: #475569; padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; }
         .sem-estoque { opacity: 0.5; filter: grayscale(1); cursor: not-allowed !important; }
-        .estoque-critico { color: #ef4444; font-weight: bold; }
 
-        /* Estilização do Carrinho */
-        .carrinho-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #f1f5f9; background: #fff; margin-bottom: 8px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .carrinho-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #f1f5f9; background: #fff; margin-bottom: 8px; border-radius: 8px; }
         .btn-remove { background: #fee2e2; color: #ef4444; border: none; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; transition: 0.2s; }
         .btn-remove:hover { background: #ef4444; color: #fff; }
 
-        /* Estilo para o seletor de pagamento no carrinho */
+        /* Estilos do Painel de Caixa no PDV */
+        .caixa-status-bar { background: #fff; border-radius: 8px; padding: 15px; margin-bottom: 15px; border: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        .caixa-info h4 { margin: 0; font-size: 0.85rem; color: #64748b; }
+        .caixa-info p { margin: 0; font-weight: 700; color: #1e293b; font-size: 0.95rem; }
+        .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 0.65rem; font-weight: 800; text-transform: uppercase; margin-bottom: 4px; display: inline-block; }
+        .status-aberto { background: #dcfce7; color: #166534; }
+        .status-fechado { background: #fee2e2; color: #991b1b; }
+        
+        .btn-caixa-acao { border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.75rem; display: flex; align-items: center; gap: 6px; transition: 0.2s; }
+        .btn-abrir { background: #2563eb; color: white; }
+        .btn-abrir:hover { background: #1d4ed8; }
+        .btn-fechar { background: #f1f5f9; color: #ef4444; border: 1px solid #fee2e2; }
+        .btn-fechar:hover { background: #ef4444; color: white; }
+
+        /* Posicionamento do X no Modal */
+        .modal-header { position: relative; padding-bottom: 15px; border-bottom: 1px solid #f1f5f9; margin-bottom: 15px; }
+        .close-modal { position: absolute; top: 0; right: 0; background: #f1f5f9; border: none; font-size: 1.2rem; width: 30px; height: 30px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #64748b; transition: 0.2s; }
+        .close-modal:hover { background: #fee2e2; color: #ef4444; }
+
         .payment-box { margin-top: 15px; padding-top: 15px; border-top: 1px dashed #cbd5e1; }
         .payment-box label { display: block; font-size: 0.8rem; font-weight: 600; color: #64748b; margin-bottom: 5px; }
         .payment-box select { width: 100%; padding: 8px; border-radius: 6px; border: 1px solid #cbd5e1; background: #f8fafc; font-family: inherit; }
 
-        /* Utilitários */
-        .loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.8); display: none; align-items: center; justify-content: center; z-index: 9999; }
-        .loading-overlay.active { display: flex; }
-        .toast-container { position: fixed; bottom: 20px; right: 20px; z-index: 10000; }
+        .sidebar-backup { margin-top: auto; padding: 20px 0; border-top: 1px solid rgba(255,255,255,0.1); }
+        .btn-sidebar-action { background: transparent; color: #94a3b8; border: 1px solid #475569; width: 100%; padding: 8px; border-radius: 6px; cursor: pointer; font-size: 0.75rem; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: 0.2s; }
+        .btn-sidebar-action:hover { background: #475569; color: white; }
     </style>
 </head>
 <body>
@@ -44,23 +57,22 @@
             <h1>PDV <span>Control</span></h1>
         </div>
         <ul class="sidebar-menu">
-            <li class="active" data-page="pdv">
-                <i class="fas fa-shopping-cart"></i>
-                <span>Vendas (PDV)</span>
-            </li>
-            <li data-page="produtos">
-                <i class="fas fa-boxes-stacked"></i>
-                <span>Produtos</span>
-            </li>
-            <li data-page="estoque">
-                <i class="fas fa-warehouse"></i>
-                <span>Estoque</span>
-            </li>
-            <li data-page="vendas">
-                <i class="fas fa-chart-pie"></i>
-                <span>Relatórios</span>
-            </li>
+            <li class="active" data-page="pdv"><i class="fas fa-shopping-cart"></i><span>Vendas (PDV)</span></li>
+            <li data-page="produtos"><i class="fas fa-boxes-stacked"></i><span>Produtos</span></li>
+            <li data-page="estoque"><i class="fas fa-warehouse"></i><span>Estoque</span></li>
+            <li data-page="vendas"><i class="fas fa-chart-pie"></i><span>Relatórios</span></li>
         </ul>
+
+        <div class="sidebar-backup">
+            <button class="btn-sidebar-action" onclick="API.exportDatabase()">
+                <i class="fas fa-download"></i> Backup Dados
+            </button>
+            <button class="btn-sidebar-action" onclick="document.getElementById('import-file').click()">
+                <i class="fas fa-upload"></i> Restaurar Dados
+            </button>
+            <input type="file" id="import-file" style="display: none;" accept=".json" onchange="handleImport(this)">
+        </div>
+
         <div class="sidebar-footer">
             <p id="current-date">--/--/----</p>
             <p id="current-time">00:00:00</p>
@@ -68,53 +80,43 @@
     </nav>
 
     <main class="main-content">
-        
         <section id="pdv-page" class="page active">
-            <div class="page-header">
-                <h2>Ponto de Venda</h2>
-                <div class="user-info">
-                    <span><i class="fas fa-user-circle"></i> Operador Padrão</span>
-                </div>
-            </div>
-
+            <div class="page-header"><h2>Ponto de Venda</h2></div>
             <div class="pdv-grid">
                 <div class="pdv-left">
                     <div class="controls-row">
-                        <div class="search-wrapper">
-                            <i class="fas fa-search"></i>
-                            <input type="text" id="search-produto" placeholder="Buscar por nome ou código...">
-                        </div>
-                        <div id="filter-tabs" class="filter-group"></div>
+                        <div class="search-wrapper"><i class="fas fa-search"></i><input type="text" id="search-produto" placeholder="Buscar por nome..."></div>
                     </div>
                     <div id="produtos-grid" class="produtos-grid"></div>
                 </div>
-
+                
                 <div class="pdv-right">
-                    <div class="cart-card">
-                        <div class="cart-header">
-                            <h3><i class="fas fa-shopping-basket"></i> Carrinho</h3>
-                            <button class="btn-text" id="btn-limpar">Limpar</button>
+                    <div class="caixa-status-bar" id="caixa-status-container">
+                        <div class="caixa-info">
+                            <span id="caixa-badge" class="status-badge status-fechado">Caixa Fechado</span>
+                            <h4 id="caixa-operador-label">Operador: ---</h4>
+                            <p id="caixa-valor-label">Saldo: R$ 0,00</p>
                         </div>
+                        <div id="caixa-acoes"></div>
+                    </div>
+
+                    <div class="cart-card">
+                        <div class="cart-header"><h3>Carrinho</h3><button class="btn-text" id="btn-limpar">Limpar</button></div>
                         <div id="carrinho-itens" class="cart-body"></div>
                         <div class="cart-footer">
-                            <div class="summary-row total">
-                                <span>Total</span>
-                                <strong id="total">R$ 0,00</strong>
-                            </div>
+                            <div class="summary-row total"><span>Total</span><strong id="total">R$ 0,00</strong></div>
                             
                             <div class="payment-box">
                                 <label>Forma de Recebimento</label>
                                 <select id="forma-pagamento">
                                     <option value="Dinheiro">Dinheiro</option>
                                     <option value="PIX">PIX</option>
-                                    <option value="Cartão de Débito">Cartão de Débito</option>
-                                    <option value="Cartão de Crédito">Cartão de Crédito</option>
+                                    <option value="Débito">Cartão de Débito</option>
+                                    <option value="Crédito">Cartão de Crédito</option>
                                 </select>
                             </div>
 
-                            <button id="btn-finalizar" class="btn-complete-order" style="margin-top: 15px;">
-                                FINALIZAR VENDA (F8)
-                            </button>
+                            <button id="btn-finalizar" class="btn-complete-order" style="margin-top: 15px;">FINALIZAR VENDA (F8)</button>
                         </div>
                     </div>
                 </div>
@@ -122,22 +124,10 @@
         </section>
 
         <section id="produtos-page" class="page">
-            <div class="page-header">
-                <h2>Produtos</h2>
-                <button class="btn-primary" id="btn-novo-produto">Novo Produto</button>
-            </div>
+            <div class="page-header"><h2>Produtos</h2><button class="btn-primary" id="btn-novo-produto">Novo Produto</button></div>
             <div class="card-table">
                 <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Produto</th>
-                            <th>Categoria</th>
-                            <th>Preço</th>
-                            <th>Estoque</th>
-                            <th>Status</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
+                    <thead><tr><th>Produto</th><th>Categoria</th><th>Preço</th><th>Estoque</th><th>Status</th><th>Ações</th></tr></thead>
                     <tbody id="produtos-tbody"></tbody>
                 </table>
             </div>
@@ -148,72 +138,68 @@
             <div id="estoque-alerts"></div>
             <div class="card-table">
                 <table class="data-table">
-                    <thead>
-                        <tr>
-                            <th>Produto</th>
-                            <th>Categoria</th>
-                            <th>Qtd Atual</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
+                    <thead><tr><th>Produto</th><th>Categoria</th><th>Qtd Atual</th><th>Ações</th></tr></thead>
                     <tbody id="movimentacoes-tbody"></tbody>
                 </table>
             </div>
         </section>
 
         <section id="vendas-page" class="page">
-            <div class="page-header"><h2>Relatórios</h2></div>
+            <div class="page-header"><h2>Relatórios de Fluxo de Caixa</h2></div>
             <div class="stats-grid">
-                <div class="stat-card"><span>Hoje</span><h2 id="stat-hoje">R$ 0,00</h2></div>
-                <div class="stat-card"><span>Vendas</span><h2 id="stat-vendas-hoje">0</h2></div>
+                <div class="stat-card"><span>Faturamento Hoje</span><h2 id="stat-hoje">R$ 0,00</h2></div>
+                <div class="stat-card"><span>Qtd Vendas</span><h2 id="stat-vendas-hoje">0</h2></div>
                 <div class="stat-card"><span>Ticket Médio</span><h2 id="stat-ticket">R$ 0,00</h2></div>
             </div>
             <div class="card-table">
                 <table class="data-table">
-                    <thead>
-                        <tr><th>ID</th><th>Data</th><th>Total</th><th>Pagamento</th><th>Ações</th></tr>
-                    </thead>
+                    <thead><tr><th>Operador</th><th>Abertura</th><th>Fundo Inicial</th><th>Total Vendido</th><th>Ações</th></tr></thead>
                     <tbody id="vendas-tbody"></tbody>
                 </table>
             </div>
         </section>
     </main>
 
+    <div class="modal" id="modal-abrir-caixa">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3>Abertura de Caixa</h3>
+                <button class="close-modal" onclick="window.fecharModalCaixa()">&times;</button>
+            </div>
+            <form id="form-abrir-caixa">
+                <div class="form-group">
+                    <label>Nome do Operador</label>
+                    <input type="text" id="caixa-operador-input" required placeholder="Ex: Clovis">
+                </div>
+                <div class="form-group">
+                    <label>Valor de Fundo (R$)</label>
+                    <input type="number" id="caixa-fundo-input" step="0.01" value="0.00" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn-primary" style="width: 100%;">ABRIR TURNO</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <div class="modal" id="modal-produto">
         <div class="modal-content">
             <div class="modal-header">
                 <h3 id="modal-produto-titulo">Ficha do Produto</h3>
-                <button class="close-modal">&times;</button>
+                <button class="close-modal" onclick="document.getElementById('modal-produto').style.display='none'">&times;</button>
             </div>
             <form id="form-produto">
                 <input type="hidden" id="produto-id">
-                <div class="form-group">
-                    <label>Nome</label>
-                    <input type="text" id="produto-nome" required>
+                <div class="form-group"><label>Nome</label><input type="text" id="produto-nome" required></div>
+                <div class="form-row">
+                    <div class="form-group"><label>Categoria</label><input type="text" id="produto-categoria-input" required></div>
+                    <div class="form-group"><label>Preço</label><input type="number" id="produto-preco" step="0.01" required></div>
                 </div>
                 <div class="form-row">
-                    <div class="form-group">
-                        <label>Categoria</label>
-                        <input type="text" id="produto-categoria-input" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Preço</label>
-                        <input type="number" id="produto-preco" step="0.01" required>
-                    </div>
+                    <div class="form-group"><label>Estoque</label><input type="number" id="produto-estoque" required></div>
+                    <div class="form-group"><label>Mínimo</label><input type="number" id="produto-estoque-minimo" value="5"></div>
                 </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Estoque</label>
-                        <input type="number" id="produto-estoque" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Mínimo</label>
-                        <input type="number" id="produto-estoque-minimo" value="5">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="submit" class="btn-primary">Gravar Produto</button>
-                </div>
+                <div class="modal-footer"><button type="submit" class="btn-primary">Gravar Produto</button></div>
             </form>
         </div>
     </div>
@@ -228,5 +214,28 @@
     <script src="js/vendas.js"></script>
     <script src="js/app.js"></script>
 
+    <script>
+        window.fecharModalCaixa = () => document.getElementById('modal-abrir-caixa').style.display = 'none';
+        window.abrirModalCaixa = () => document.getElementById('modal-abrir-caixa').style.display = 'flex';
+        
+        async function handleImport(input) {
+            if (input.files.length === 0) return;
+            if (confirm("Isso substituirá todos os dados atuais. Prosseguir?")) {
+                try {
+                    await API.importDatabase(input.files[0]);
+                } catch (err) { alert("Erro ao importar arquivo."); }
+            }
+            input.value = '';
+        }
+
+        async function confirmarFecharCaixa() {
+            const caixa = await API.getCaixaStatus();
+            if (!caixa.aberto) return;
+            if (confirm(`Deseja realmente encerrar o turno de ${caixa.operador}?`)) {
+                await API.fecharCaixa();
+                location.reload();
+            }
+        }
+    </script>
 </body>
 </html>
