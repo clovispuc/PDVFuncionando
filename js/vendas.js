@@ -1,23 +1,22 @@
 /**
- * Módulo de Vendas e Relatórios
- * Responsável pelo processamento do histórico financeiro e estatísticas.
+ * Módulo de Relatórios e Fluxo de Caixa
+ * Responsável por listar as sessões de caixa por operador e detalhar os movimentos.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
     
     // Inicialização do módulo de relatórios
-    const initVendas = async () => {
-        await renderEstatisticas();
-        await renderTabelaVendas();
+    const initRelatorios = async () => {
+        await renderEstatisticasGerais();
+        await renderTabelaSessoes();
     };
 
-    // Calcula e exibe os cards de resumo (Faturamento, Qtd Vendas, Ticket Médio)
-    const renderEstatisticas = async () => {
+    // Calcula estatísticas do dia (soma de todas as sessões de hoje)
+    const renderEstatisticasGerais = async () => {
         try {
             const vendas = await API.getVendas();
             const hoje = new Date().toLocaleDateString('pt-BR');
             
-            // Filtra apenas as vendas ocorridas na data de hoje
             const vendasHoje = vendas.filter(v => {
                 const dataVenda = new Date(v.data).toLocaleDateString('pt-BR');
                 return dataVenda === hoje;
@@ -27,7 +26,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const totalVendas = vendasHoje.length;
             const ticketMedio = totalVendas > 0 ? faturamentoHoje / totalVendas : 0;
 
-            // Atualiza os elementos de interface
             const elFaturamento = document.getElementById('stat-hoje');
             const elContagem = document.getElementById('stat-vendas-hoje');
             const elTicket = document.getElementById('stat-ticket');
@@ -37,80 +35,92 @@ document.addEventListener('DOMContentLoaded', () => {
             if (elTicket) elTicket.innerText = Utils.formatCurrency(ticketMedio);
 
         } catch (error) {
-            Utils.log('VENDAS_ESTATISTICAS', error);
+            Utils.log('RELATORIO_ESTATISTICAS', error);
         }
     };
 
-    // Renderiza a lista de vendas recentes na tabela
-    const renderTabelaVendas = async () => {
+    // Renderiza a tabela de sessões de caixa (Turnos)
+    const renderTabelaSessoes = async () => {
         const tbody = document.getElementById('vendas-tbody');
         if (!tbody) return;
 
         try {
-            const vendas = await API.getVendas();
-            
-            // Ordena para mostrar as vendas mais recentes primeiro
-            const vendasOrdenadas = [...vendas].sort((a, b) => new Date(b.data) - new Date(a.data));
+            const sessoes = await API.getSessoes();
+            const sessoesOrdenadas = [...sessoes].sort((a, b) => new Date(b.dataAbertura) - new Date(a.dataAbertura));
 
-            if (vendasOrdenadas.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">Nenhuma venda registrada.</td></tr>';
+            if (sessoesOrdenadas.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px;">Nenhum histórico de caixa encontrado.</td></tr>';
                 return;
             }
 
-            tbody.innerHTML = vendasOrdenadas.map(venda => `
-                <tr>
-                    <td>#${venda.id.toString().slice(-6)}</td>
-                    <td>${new Date(venda.data).toLocaleString('pt-BR')}</td>
-                    <td><strong>${Utils.formatCurrency(venda.total)}</strong></td>
-                    <td>
-                        <span style="background: #f1f5f9; color: #475569; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">
-                            ${venda.pagamento || 'Dinheiro'}
-                        </span>
-                    </td>
-                    <td>
-                        <button class="btn-edit" onclick="verDetalhesVenda('${venda.id}')" title="Ver Detalhes">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                    </td>
-                </tr>
-            `).join('');
-
-        } catch (error) {
-            Utils.log('VENDAS_TABELA', error);
-        }
-    };
-
-    // Função para exibir detalhes completos da venda, incluindo observações
-    window.verDetalhesVenda = async (id) => {
-        try {
-            const vendas = await API.getVendas();
-            const venda = vendas.find(v => String(v.id) === String(id));
-            
-            if (venda) {
-                const listaItens = venda.itens.map(i => `• ${i.nome} (${i.quantidade}x)`).join('\n');
-                const obs = venda.observacao && venda.observacao.trim() !== "" 
-                            ? venda.observacao 
-                            : "Nenhuma observação registrada.";
-
-                const msg = `DETALHES DA VENDA #${id.toString().slice(-6)}\n` +
-                            `------------------------------------------\n` +
-                            `Data: ${new Date(venda.data).toLocaleString('pt-BR')}\n` +
-                            `Pagamento: ${venda.pagamento || 'Dinheiro'}\n\n` +
-                            `ITENS:\n${listaItens}\n\n` +
-                            `OBSERVAÇÕES:\n${obs}\n\n` +
-                            `------------------------------------------\n` +
-                            `TOTAL: ${Utils.formatCurrency(venda.total)}`;
+            tbody.innerHTML = sessoesOrdenadas.map(sessao => {
+                const dataAbt = new Date(sessao.dataAbertura).toLocaleString('pt-BR');
+                const statusSessao = sessao.dataFechamento ? 'Fechado' : 'Aberto';
                 
-                alert(msg);
-            }
+                return `
+                    <tr>
+                        <td><strong>${sessao.operador}</strong></td>
+                        <td>${dataAbt}</td>
+                        <td>${Utils.formatCurrency(sessao.saldoInicial)}</td>
+                        <td><strong style="color: #2563eb;">${Utils.formatCurrency(sessao.totalVendas || 0)}</strong></td>
+                        <td>
+                            <button class="btn-edit" onclick="verDetalhesSessao('${sessao.sessaoId}')" title="Ver Movimentação">
+                                <i class="fas fa-list-check"></i> Ver Itens
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
         } catch (error) {
-            Utils.log('VENDAS_DETALHES', error);
+            Utils.log('RELATORIO_TABELA_SESSOES', error);
         }
     };
 
-    // Escuta o evento de venda concluída no PDV para atualizar os relatórios em tempo real
-    window.addEventListener('vendaFinalizada', initVendas);
+    /**
+     * Mostra todas as vendas e itens vendidos numa sessão específica
+     */
+    window.verDetalhesSessao = async (sessaoId) => {
+        try {
+            const sessoes = await API.getSessoes();
+            const vendas = await API.getVendas();
+            
+            const sessao = sessoes.find(s => s.sessaoId === sessaoId);
+            const vendasDaSessao = vendas.filter(v => v.sessaoId === sessaoId);
 
-    // Inicialização manual caso a aba de relatórios seja carregada
-    initVendas();
+            if (!sessao) return;
+
+            let relatorioTexto = `FLUXO DE CAIXA - OPERADOR: ${sessao.operador}\n`;
+            relatorioTexto += `Abertura: ${new Date(sessao.dataAbertura).toLocaleString('pt-BR')}\n`;
+            relatorioTexto += `Fundo Inicial: ${Utils.formatCurrency(sessao.saldoInicial)}\n`;
+            relatorioTexto += `------------------------------------------\n\n`;
+
+            if (vendasDaSessao.length === 0) {
+                relatorioTexto += "Nenhuma venda realizada neste turno.";
+            } else {
+                vendasDaSessao.forEach((v, index) => {
+                    relatorioTexto += `VENDA #${index + 1} - ${v.pagamento}\n`;
+                    v.itens.forEach(item => {
+                        relatorioTexto += `  > ${item.quantidade}x ${item.nome} (${Utils.formatCurrency(item.preco)})\n`;
+                    });
+                    if(v.observacao) relatorioTexto += `  Obs: ${v.observacao}\n`;
+                    relatorioTexto += `  Subtotal: ${Utils.formatCurrency(v.total)}\n\n`;
+                });
+            }
+
+            relatorioTexto += `------------------------------------------\n`;
+            relatorioTexto += `TOTAL VENDIDO NO TURNO: ${Utils.formatCurrency(sessao.totalVendas || 0)}`;
+
+            alert(relatorioTexto);
+
+        } catch (error) {
+            Utils.log('RELATORIO_DETALHES', error);
+        }
+    };
+
+    // Listener para quando uma venda é finalizada ou caixa fechado
+    window.addEventListener('vendaFinalizada', initRelatorios);
+    
+    // Inicia a renderização
+    initRelatorios();
 });
