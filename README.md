@@ -1,47 +1,47 @@
-# PDV Control - Sistema de Gestão de Vendas
 
-Sistema de Ponto de Venda (PDV) completo e autossuficiente, desenvolvido em JavaScript puro. O sistema permite a gestão completa de produtos, controle de estoque crítico, realização de vendas com observações e relatórios financeiros detalhados.
+# 🛒 PDV Funcionando
 
-## ✨ Funcionalidades
+Bem-vindo ao projeto **PDV**! Este é um sistema de Ponto de Venda (PDV) desenvolvido para ser simples, funcional e eficiente no gerenciamento de vendas e controle básico de estoque.
 
-### 🛒 Vendas (PDV)
-- Adição de produtos ao carrinho com um clique.
-- **Edição de quantidade** diretamente no carrinho.
-- Campo de **Observações** para cada venda.
-- Escolha da forma de pagamento (Dinheiro, PIX, Cartão).
-- Finalização rápida via tecla de atalho **F8**.
+![Status do Projeto](https://img.shields.io/badge/STATUS-FUNCIONANDO-brightgreen)
+![Versão](https://img.shields.io/badge/VERSÃO-1.3-blue)
 
-### 📦 Gestão de Produtos e Estoque
-- Cadastro completo com categorias e preço.
-- **Alertas de estoque crítico**: Notificação visual quando o item está abaixo do mínimo.
-- **Ajustes Manuais**: Entrada e saída de mercadorias simplificada.
-- Baixa automática de estoque após a conclusão da venda.
+## 📋 Sobre o Projeto
 
-### 📊 Relatórios e Estorno
-- Dashboard de faturamento diário e ticket médio.
-- Histórico completo de vendas realizadas.
-- **Sistema de Estorno**: Botão para excluir venda que devolve automaticamente os produtos ao estoque.
+O **PDV** foi criado com o objetivo de demonstrar um fluxo completo de vendas, desde o cadastro de produtos até a finalização da compra. O projeto está estruturado para ser de fácil entendimento, permitindo que novos desenvolvedores e estudantes compreendam a lógica por trás de um sistema comercial.
 
-### 💾 Portabilidade e Backup
-- **Exportação de Dados**: Gere um arquivo `.json` com todo o seu banco de dados.
-- **Importação de Dados**: Restaure seu backup em qualquer outra máquina via navegador.
-- **Hospedagem**: Compatível com GitHub Pages para uso em tablets e celulares.
+### Principais Funcionalidades
+
+* 📦 **Gestão de Produtos:** Cadastro, edição e listagem de itens.
+* 💰 **Realização de Vendas:** Interface para passar itens, calcular totais e troco.
+* 🧾 **Emissão de Comprovante:** Geração de resumo da venda (na tela ou arquivo).
+* 📉 **Controle de Estoque:** Baixa automática de itens após a venda.
+* 👤 **Controle de Acesso:** Login simples para operadores/caixas.
+
+---
 
 ## 🚀 Tecnologias Utilizadas
 
-- **HTML5 / CSS3**: Layout moderno e responsivo.
-- **JavaScript (ES6+)**: Lógica de banco de dados e interface.
-- **LocalStorage**: Persistência de dados local sem necessidade de servidor.
-- **FontAwesome**: Ícones do sistema.
+Este projeto foi desenvolvido utilizando as seguintes tecnologias:
 
-## 🛠️ Como Utilizar em Qualquer Máquina
+* **HTML5 / CSS3:** Layout moderno e responsivo.
+* **JavaScript (ES6+):** Lógica de banco de dados e interface.
+* **LocalStorage:** Persistência de dados local sem necessidade de servidor.
+* **FontAwesome:** Ícones do sistema.
+---
 
-Por utilizar o `localStorage`, os dados ficam salvos no seu navegador. Para migrar ou fazer backup:
+## ⚙️ Pré-requisitos
 
-1. **Para salvar seus dados:** Utilize a função `API.exportDatabase()` para baixar o arquivo de backup.
-2. **Para restaurar em outro PC:** Abra o sistema no novo computador e utilize a função `API.importDatabase(arquivo)` para carregar seus produtos e vendas.
+Antes de começar, certifique-se de ter instalado em sua máquina:
+
+1.  **[Linguagem] JDK/SDK:** Versão [X] ou superior.
+2.  **Banco de Dados:** [Nome do Banco] instalado e rodando.
+3.  **IDE:** Recomendamos [IntelliJ IDEA / Eclipse / Visual Studio / VS Code].
+
 
 ---
+
+## 🔧 Instalação e Configuração
 
 ## 📂 Estrutura de Arquivos
 
@@ -53,5 +53,4 @@ Por utilizar o `localStorage`, os dados ficam salvos no seu navegador. Para migr
 - `js/vendas.js`: Relatórios, estatísticas e estornos.
 - `js/utils.js`: Formatadores e sistema de logs.
 
----
-Desenvolvido por Clovis F. Vieira
+**Desenvolvido por** **[Clóvis Fernandes Vieira]**
