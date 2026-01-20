@@ -1,14 +1,8 @@
-/**
- * Módulo de Produtos
- * Gerencia o cadastro, edição e listagem de itens no catálogo.
- */
-
 document.addEventListener('DOMContentLoaded', () => {
     const formProduto = document.getElementById('form-produto');
     const btnNovoProduto = document.getElementById('btn-novo-produto');
     const modalProduto = document.getElementById('modal-produto');
 
-    // Inicializa os eventos de clique do modal
     if (btnNovoProduto) {
         btnNovoProduto.addEventListener('click', () => {
             formProduto.reset();
@@ -19,7 +13,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Lógica de Salvar Produto
     if (formProduto) {
         formProduto.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -34,17 +27,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     estoqueMinimo: parseInt(document.getElementById('produto-estoque-minimo').value) || 5
                 };
 
-                // Chama o método salvarProduto definido no seu js/api.js
                 await API.salvarProduto(produtoData);
                 
                 Utils.showToast('Produto gravado com sucesso!');
                 
-                // Fecha o modal e limpa o formulário
                 modalProduto.classList.remove('active');
                 modalProduto.style.display = 'none';
                 formProduto.reset();
                 
-                // Atualiza a tabela local e notifica outros módulos
                 window.renderProdutosTable();
                 window.dispatchEvent(new CustomEvent('produtosUpdated'));
                 
@@ -55,7 +45,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Função para renderizar a tabela (Exposta globalmente)
     window.renderProdutosTable = async () => {
         const tbody = document.getElementById('produtos-tbody');
         if (!tbody) return;
@@ -95,7 +84,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Função para carregar dados no modal de edição
     window.editarProduto = async (id) => {
         try {
             const produtos = await API.getProdutos();
@@ -118,7 +106,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Função para excluir produto
     window.excluirProduto = async (id) => {
         if (confirm('Deseja realmente excluir este produto?')) {
             try {
@@ -133,6 +120,5 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Carga inicial da tabela
     window.renderProdutosTable();
 });

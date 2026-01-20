@@ -1,12 +1,5 @@
-/**
- * Módulo PDV - Ponto de Venda
- * Gerencia o estado do caixa, carrinho e interface de vendas.
- */
-
 document.addEventListener('DOMContentLoaded', () => {
     let carrinho = [];
-
-    // --- LÓGICA DE INTERFACE DO CAIXA ---
 
     const atualizarInterfaceCaixa = async () => {
         const statusContainer = document.getElementById('caixa-status-container');
@@ -20,7 +13,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const caixa = await API.getCaixaStatus();
         const vendas = await API.getVendas();
         
-        // Calcula o total vendido nesta sessão específica
         const totalVendasSessao = vendas
             .filter(v => v.sessaoId === caixa.sessaoId)
             .reduce((acc, v) => acc + v.total, 0);
@@ -50,23 +42,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Processa o formulário de abertura de caixa
     document.getElementById('form-abrir-caixa')?.addEventListener('submit', async (e) => {
         e.preventDefault();
+        const evento = document.getElementById('caixa-evento-input').value;
         const operador = document.getElementById('caixa-operador-input').value;
         const fundo = document.getElementById('caixa-fundo-input').value;
 
         if (operador.trim() === "") return;
 
-        await API.abrirCaixa(operador, fundo);
+        await API.abrirCaixa(operador, fundo, evento);
         window.fecharModalCaixa();
         Utils.showToast(`Caixa aberto por ${operador}`);
         
         atualizarInterfaceCaixa();
         renderProdutosPDV();
     });
-
-    // --- LÓGICA DE PRODUTOS ---
 
     window.renderProdutosPDV = async () => {
         const grid = document.getElementById('produtos-grid');
@@ -115,8 +105,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         renderCarrinho();
     };
-
-    // --- CARRINHO E TROCO ---
 
     const renderCarrinho = () => {
         const container = document.getElementById('carrinho-itens');
@@ -177,8 +165,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('forma-pagamento')?.addEventListener('change', renderCarrinho);
 
-    // --- FINALIZAÇÃO ---
-
     const finalizarVenda = async () => {
         const caixa = await API.getCaixaStatus();
         if (!caixa.aberto) { Utils.showToast("Abra o caixa primeiro!", "error"); return; }
@@ -209,7 +195,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('btn-finalizar')?.addEventListener('click', finalizarVenda);
     
-    // Início
     atualizarInterfaceCaixa();
     renderProdutosPDV();
     renderCarrinho();
