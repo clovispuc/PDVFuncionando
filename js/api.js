@@ -1,4 +1,9 @@
+// js/api.js
+
 const API = {
+    /**
+     * Inicializa o banco de dados.
+     */
     dbInit() {
         if (!localStorage.getItem('pdv_produtos')) {
             localStorage.setItem('pdv_produtos', JSON.stringify([]));
@@ -14,6 +19,7 @@ const API = {
         }
     },
 
+    // --- PRODUTOS ---
     async getProdutos() {
         this.dbInit();
         const data = localStorage.getItem('pdv_produtos');
@@ -40,13 +46,7 @@ const API = {
         return await this.saveProdutos(produtos);
     },
 
-    async excluirProduto(id) {
-        this.dbInit();
-        let produtos = await this.getProdutos();
-        produtos = produtos.filter(p => String(p.id) !== String(id));
-        return await this.saveProdutos(produtos);
-    },
-
+    // --- VENDAS ---
     async getVendas() {
         this.dbInit();
         const data = localStorage.getItem('pdv_vendas');
@@ -61,6 +61,7 @@ const API = {
         const vendas = await this.getVendas();
         const produtos = await this.getProdutos();
 
+        // Baixa estoque local (mantendo compatibilidade)
         venda.itens.forEach(item => {
             const pIndex = produtos.findIndex(p => String(p.id) === String(item.id));
             if (pIndex !== -1) produtos[pIndex].estoque -= item.quantidade;
@@ -73,17 +74,12 @@ const API = {
             data: new Date().toISOString()
         };
 
-        const configImpressao = {
-            titulo: caixa.evento || 'PDV CONTROL',
-            titulo_grande: true,
-            rodape: 'Obrigado pela preferência!'
-        };
-
+        // Envia para o backend Flask para salvar no SQLite e imprimir
         try {
             await fetch('/vendas', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...novaVenda, config_impressao: configImpressao })
+                body: JSON.stringify(novaVenda)
             });
         } catch (err) {
             console.error("Erro ao sincronizar com backend/impressora:", err);
@@ -95,6 +91,7 @@ const API = {
         return novaVenda;
     },
 
+    // --- GESTÃO DE CAIXA E SESSÕES (MELHORADO) ---
     async getCaixaStatus() {
         this.dbInit();
         return JSON.parse(localStorage.getItem('pdv_caixa'));
@@ -105,13 +102,12 @@ const API = {
         return JSON.parse(localStorage.getItem('pdv_sessoes'));
     },
 
-    async abrirCaixa(operador, valorInicial, evento) {
+    async abrirCaixa(operador, valorInicial) {
         const sessaoId = Date.now().toString();
         const status = {
             aberto: true,
             sessaoId: sessaoId,
             operador: operador,
-            evento: evento || 'PDV CONTROL',
             saldoInicial: parseFloat(valorInicial) || 0,
             dataAbertura: new Date().toISOString()
         };
@@ -127,6 +123,7 @@ const API = {
         const vendasDaSessao = vendas.filter(v => v.sessaoId === caixaAtual.sessaoId);
         const totalVendido = vendasDaSessao.reduce((acc, v) => acc + v.total, 0);
 
+        // Arquiva a sessão para o relatório histórico
         const sessoes = await this.getSessoes();
         sessoes.push({
             ...caixaAtual,
@@ -140,6 +137,7 @@ const API = {
         return true;
     },
 
+    // --- UTILITÁRIOS ---
     exportDatabase() {
         const data = {
             produtos: JSON.parse(localStorage.getItem('pdv_produtos')),
